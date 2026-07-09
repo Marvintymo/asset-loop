@@ -437,7 +437,7 @@ app.get('/api/state', (req, res) => {
   res.json({
     now: new Date().toISOString(),
     llm: { active: !!OPENROUTER_KEY, model: OPENROUTER_KEY ? LLM_MODEL : null },
-    settlement: { mode: SETTLEMENT_MODE, network: SETTLE_NETWORK },
+    settlement: (() => { let ok = false, resolved = null; try { if (SETTLE) { resolved = SETTLE.resolveNetwork().name; ok = true; } } catch (e) { ok = false; } return { mode: SETTLEMENT_MODE, network: SETTLE_NETWORK, active: ok, blocked: !ok, mainnetBlocked: resolved !== 'mainnet' }; })(),
     beacon: { pings: beacon.pings, subscribers: beacon.sse.size, lastPing: beacon.lastPing, since: beacon.since },
     agents: state.agents.map((a) => ({
       id: a.id, name: a.name, avatar: a.avatar || '🛰️', persona: a.persona, wants: a.wants,

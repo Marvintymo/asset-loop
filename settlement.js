@@ -25,11 +25,17 @@ bitcoin.initEccLib(ecc);
 
 const SIGHASH_SINGLE_ACP = bitcoin.Transaction.SIGHASH_SINGLE | bitcoin.Transaction.SIGHASH_ANYONECANPAY;
 
+// SECOND, CODE-LEVEL gate for mainnet. An env var alone must NEVER be able to arm
+// real-money settlement — mainnet requires BOTH this constant flipped to true
+// (a deliberate code change, made only after an independent audit) AND the env
+// flag. Defense in depth: a stray/experimental env var cannot go live.
+const MAINNET_CODE_UNLOCK = false;
 function resolveNetwork() {
   const name = (process.env.ASSET_LOOP_NETWORK || 'signet').toLowerCase();
   const allowMainnet = process.env.ASSET_LOOP_ALLOW_MAINNET === 'I_UNDERSTAND';
   if (name === 'mainnet') {
-    if (!allowMainnet) throw new Error('MAINNET is blocked. Settlement runs on signet until audited. Set ASSET_LOOP_ALLOW_MAINNET=I_UNDERSTAND only after a security audit.');
+    if (!MAINNET_CODE_UNLOCK) throw new Error('MAINNET is code-locked. It requires an independent audit AND a deliberate code change (MAINNET_CODE_UNLOCK) in addition to the env flag. Falling back is intentional — settlement will not run on mainnet.');
+    if (!allowMainnet) throw new Error('MAINNET requires ASSET_LOOP_ALLOW_MAINNET=I_UNDERSTAND (and an audit).');
     return { net: bitcoin.networks.bitcoin, apiBase: 'https://mempool.space/api', name: 'mainnet' };
   }
   if (name === 'testnet') return { net: bitcoin.networks.testnet, apiBase: 'https://mempool.space/testnet/api', name: 'testnet' };

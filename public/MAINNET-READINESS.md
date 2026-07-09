@@ -45,9 +45,17 @@ that a report/reviewer is genuine; that authenticity (and the liability) is your
       money-transmission / KYC / sanctions obligations depending on jurisdiction.
       This is **outside my lane** — get a lawyer. Do not skip it.
 
-## D. The switch (only after A–C)
-- [ ] You (a human) set the two env vars in the dashboard.
+## D. The switch (only after A–C) — now TWO independent gates
+Mainnet is deliberately gated **twice** so a single stray env var can never arm
+real-money settlement:
+- [ ] **Code gate:** `MAINNET_CODE_UNLOCK` in `settlement.js` is set to `true` — a
+      deliberate code change made only after the audit (A) passes.
+- [ ] **Env gate:** you (a human) set `ASSET_LOOP_NETWORK=mainnet` +
+      `ASSET_LOOP_ALLOW_MAINNET=I_UNDERSTAND` in the dashboard.
 - [ ] Start with the caps from (C), watch the first real settlements closely.
+
+> Until BOTH gates are open, the settlement engine refuses mainnet and no swap can
+> be built or broadcast — even if the env vars are set. This is intentional.
 
 ---
 

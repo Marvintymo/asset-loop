@@ -482,7 +482,14 @@ function renderStats(s){
 }
 function renderLLM(llm){const p=$('#llmpill');if(llm&&llm.active){p.className='pill on';p.textContent='LLM agents: ● live';}else{p.className='pill';p.textContent='LLM: off · add OPENROUTER_API_KEY';}}
 function renderBeacon(b){const p=$('#beaconpill');if(!b){p.textContent='beacon: —';return;}p.className='pill on';p.textContent=`📡 beacon: ${b.subscribers||0} agents · ${b.pings||0} pings`;}
-function renderStl(st){const p=$('#stlpill');p.className='pill';p.textContent=`settlement: ${st?st.mode+' · '+st.network:'—'}`;$('#settle-mode').textContent=st?`${st.mode} / ${st.network}`:'—';
+function renderStl(st){const p=$('#stlpill');
+  if(st&&st.blocked){
+    p.className='pill';p.style.color='var(--red)';p.textContent='settlement: 🔒 mainnet code-locked';
+    $('#settle-mode').textContent='blocked';
+    $('#settle-banner').innerHTML=`🔒 <b>Settlement is disabled.</b> The network is set to <b>mainnet</b>, but mainnet is <b>code-locked</b> (pending an independent audit) — <b>no swaps can be built or broadcast.</b> To use the working settlement engine, set <code>ASSET_LOOP_NETWORK</code> back to <b>signet</b>.`;
+    return;
+  }
+  p.className='pill';p.style.color='';p.textContent=`settlement: ${st?st.mode+' · '+st.network:'—'}`;$('#settle-mode').textContent=st?`${st.mode} / ${st.network}`:'—';
   $('#settle-banner').innerHTML=`🔐 <b>Non-custodial by design.</b> Wallets stay self-custody; the platform coordinates signed transfers but never holds keys. Settlement mode: <b>${st?st.mode:'—'}</b> on <b>${st?st.network:'—'}</b> — no mainnet funds move in this mode.`;}
 function renderAgents(agents){
   const order=agents.slice().sort((a,b)=>(b.wallet?1:0)-(a.wallet?1:0));
