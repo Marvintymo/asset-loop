@@ -718,10 +718,12 @@ app.get('/api/settlement/utxos', async (req, res) => {
 const DUST = 546; // standard p2wpkh/p2tr dust floor
 const isSats = (x) => Number.isInteger(x) && x > 0 && x <= 21e14;
 const UTXO_RE = /^[0-9a-f]{64}$/i;
-// Fetch an input's REAL value from chain (never trust a caller-supplied value).
+const MIN_CONF = Number.isFinite(parseInt(process.env.ASSET_LOOP_MIN_CONF, 10)) ? parseInt(process.env.ASSET_LOOP_MIN_CONF, 10) : 1;
+// Strongly verify an input on chain: real value, not spent, ≥ MIN_CONF confs, and
+// (on mainnet) value agreed across two indexers. Never trusts caller-supplied value.
 async function verifiedInput(u) {
   if (!u || !UTXO_RE.test(String(u.txid)) || !Number.isInteger(u.vout) || u.vout < 0) throw new Error('bad utxo {txid,vout}');
-  const value = await SETTLE.getUtxoValue(u.txid, u.vout); // throws if vout missing
+  const value = await SETTLE.verifyInputOnChain(u.txid, u.vout, { minConf: MIN_CONF });
   return { txid: u.txid, vout: u.vout, value, address: u.address };
 }
 

@@ -232,6 +232,40 @@ async function getUtxoValue(txid, vout) {
   return out.value;
 }
 
+// ── Indexer trust hardening ─────────────────────────────────────────────────
+// A second independent indexer for mainnet value cross-checks (esplora-compatible).
+function secondaryBase(name) { return name === 'mainnet' ? (process.env.ASSET_LOOP_INDEXER_2 || 'https://blockstream.info/api') : null; }
+async function tipHeight(base) { return parseInt(await api('/blocks/tip/height', { base }), 10); }
+
+// Strongly verify an outpoint before it's used in a swap: real value from chain,
+// NOT spent, meets a confirmation-depth minimum, and (on mainnet) its value agrees
+// across two independent indexers. Fails closed on any disagreement.
+async function verifyInputOnChain(txid, vout, { minConf = 1 } = {}) {
+  const cfg = resolveNetwork();
+  const tx = JSON.parse(await api(`/tx/${txid}`, { base: cfg.apiBase }));
+  const out = tx.vout[vout];
+  if (!out) throw new Error(`vout ${vout} not found on ${txid}`);
+  const value = out.value;
+  // Unspent check (double-spend / already-consumed protection).
+  const os = JSON.parse(await api(`/tx/${txid}/outspend/${vout}`, { base: cfg.apiBase }));
+  if (os && os.spent) throw new Error(`input ${txid}:${vout} is already spent`);
+  // Confirmation-depth requirement.
+  if (!tx.status || !tx.status.confirmed) {
+    if (minConf > 0) throw new Error(`input ${txid}:${vout} is unconfirmed (need ${minConf} conf)`);
+  } else {
+    const conf = (await tipHeight(cfg.apiBase)) - tx.status.block_height + 1;
+    if (conf < minConf) throw new Error(`input ${txid}:${vout} has ${conf} conf (need ${minConf})`);
+  }
+  // Multi-source value cross-check (mainnet): fail closed if indexers disagree.
+  const sec = secondaryBase(cfg.name);
+  if (sec) {
+    const t2 = JSON.parse(await api(`/tx/${txid}`, { base: sec }));
+    const v2 = t2.vout[vout] && t2.vout[vout].value;
+    if (v2 !== value) throw new Error(`indexer value disagreement for ${txid}:${vout} (${value} vs ${v2}) — refusing`);
+  }
+  return value;
+}
+
 // Ordinals-awareness: list inscriptions on an output via an `ord` server/API.
 // Configure with ASSET_LOOP_ORD_API (e.g. a local ord server or ordinals.com).
 // Returns an array of inscription ids ([] if none). Throws if the API is
@@ -254,5 +288,5 @@ module.exports = {
   resolveNetwork, buildSellerOffer, buildBuyerCompletion, finalizeAndBroadcast,
   getUtxos, getFeeRate, getUtxoValue,
   ordinalRoutedOutput, assertOrdinalRouting, buildAtomicSwap,
-  ordApiBase, inscriptionsOnOutput,
+  ordApiBase, inscriptionsOnOutput, verifyInputOnChain,
 };

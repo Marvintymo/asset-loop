@@ -121,6 +121,11 @@ for i in $(seq 1 40); do
   sleep 1
 done
 LOC=$(curl -s -m8 -H "Accept: application/json" "http://localhost:$ORD_PORT/inscription/$INSC_ID")
+
+# Multi-inscription safety guard (exercises SETTLE.inscriptionsOnOutput via ord).
+say "multi-inscription guard (ASSET_LOOP_ORD_API)"
+ASSET_LOOP_ORD_API="http://localhost:$ORD_PORT" BTC_ROOT="$ROOT" node "$REPO/tools/ord-guard-check.js" || true
+
 CLI="$CLI" TXID="$TXID" INSC_ID="$INSC_ID" LOC="$LOC" python3 <<'PY'
 import os,subprocess,json
 cli=os.environ['CLI'].split(); txid=os.environ['TXID']

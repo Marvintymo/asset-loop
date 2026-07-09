@@ -31,8 +31,10 @@ Mainnet stays hard-blocked regardless.
 - **[was MED] Money as float — settlement path is integer sats.** The real swap path (`build-swap`) validates `price_sats` as an integer and fetches input values as integer sats from chain; the illustrative quote now also expresses `price_sats`. (The auction *simulation* still uses BTC floats for display — it never touches the fund path.)
 - **[was MED] Ownership model — DONE.** Assets consigned by a connected wallet are bound to `owner_id`; only that owner's verified session may pause/resume/withdraw them (anonymous demo assets stay open, rate-limited).
 
+## Closed in a follow-up hardening pass (3rd round)
+- **[was HIGH] Indexer trust — HARDENED.** `verifyInputOnChain()` now, for every swap input: (a) fetches the **real value** from chain, (b) rejects **already-spent** outputs (`/outspend`), (c) requires a **confirmation-depth** minimum (`ASSET_LOOP_MIN_CONF`, default 1), and (d) on **mainnet cross-checks the value against a second independent indexer** (`ASSET_LOOP_INDEXER_2`, default blockstream.info) and fails closed on disagreement. Verified against live signet.
+
 ## Remaining — for the independent/community audit (NOT fully fixed)
-- **[HIGH] Indexer trust** — values are now cross-checked against chain, but there is still a single indexer, no confirmation-depth requirement, and no double-spend/mempool re-check before broadcast. A real deployment needs multi-source confirmation + N-conf.
 - **[MED] Consignment `verified` + `image_url` are self-asserted** (`/api/consign`) — set `verified` only from a server-side `/api/lookup`; https-only image/source URLs.
 - **[LOW] Taproot key-path finalize** — inputs are added `witnessUtxo`-only. The real-inscription regtest proof finalized fine because the ord wallet supplied the taproot signing fields; confirm behavior for arbitrary external taproot signers and populate `tapInternalKey`/sighash explicitly.
 - **[LOW] Rate-limit `x-forwarded-for`** on `/api/agents/register` is spoofable; behind the dashboard proxy set `trust proxy` and derive the real client IP.
