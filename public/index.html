@@ -374,9 +374,11 @@ async function getAddress(prov){
   if(prov.key==='evm'){const a=await window.ethereum.request({method:'eth_requestAccounts'});return a[0];}
 }
 async function signMsg(prov,address,message){
-  if(prov.key==='unisat') return await window.unisat.signMessage(message);
-  if(prov.key==='okx') return await window.okxwallet.bitcoin.signMessage(message,'ecdsa');
-  if(prov.key==='leather'){const r=await window.LeatherProvider.request('signMessage',{message,paymentType:'p2wpkh'});return r.result.signature;}
+  // Taproot (bc1p/tb1p/bcrt1p) requires a BIP-322 signature; legacy/segwit use ECDSA (BIP-137).
+  const taproot=/^(bc1p|tb1p|bcrt1p)/i.test(address);
+  if(prov.key==='unisat') return await window.unisat.signMessage(message, taproot?'bip322-simple':'ecdsa');
+  if(prov.key==='okx') return await window.okxwallet.bitcoin.signMessage(message, taproot?'bip322-simple':'ecdsa');
+  if(prov.key==='leather'){const r=await window.LeatherProvider.request('signMessage',{message,paymentType:taproot?'p2tr':'p2wpkh'});return r.result.signature;}
   if(prov.key==='evm') return await window.ethereum.request({method:'personal_sign',params:[message,address]});
 }
 async function connectWallet(prov){

@@ -25,6 +25,8 @@ const crypto = require('crypto');
 const { ethers } = require('ethers');
 let btcMessage = null;
 try { btcMessage = require('bitcoinjs-message'); } catch (e) { console.error('bitcoinjs-message unavailable:', e.message); }
+let bip322 = null;
+try { bip322 = require('bip322-js'); } catch (e) { console.error('bip322-js unavailable:', e.message); }
 let SETTLE = null;
 try { SETTLE = require('./settlement'); } catch (e) { console.error('settlement engine unavailable:', e.message); }
 const btcToSats = (btc) => Math.max(0, Math.round(Number(btc) * 1e8));
@@ -349,8 +351,8 @@ async function lookupCounterparty(ref) {
 
 // ─────────────────────────── Persistence ────────────────────────────────────
 async function persistAsset(a) {
-  await dbExec(`INSERT OR REPLACE INTO al_assets (id,name,type,collection,category,image_url,traits,reserve,royalty,status,holder_id,holder_name,price,high_water,mv,earnings,flips,verified,source_url,content_type,external_meta,created_at,updated_at)
-    VALUES (${sqlVal(a.id)},${sqlVal(a.name)},${sqlVal(a.type)},${sqlVal(a.collection)},${sqlVal(a.category)},${sqlVal(a.image_url)},${sqlVal(JSON.stringify(a.traits || []))},${sqlVal(a.reserve)},${sqlVal(a.royalty)},${sqlVal(a.status)},${sqlVal(a.holder_id)},${sqlVal(a.holder_name)},${sqlVal(a.price)},${sqlVal(a.high_water)},${sqlVal(a.mv)},${sqlVal(a.earnings)},${sqlVal(a.flips)},${sqlVal(a.verified ? 1 : 0)},${sqlVal(a.source_url || null)},${sqlVal(a.content_type || null)},${sqlVal(JSON.stringify(a.meta || null))},${sqlVal(a.created_at)},${sqlVal(a.updated_at)})`);
+  await dbExec(`INSERT OR REPLACE INTO al_assets (id,name,type,collection,category,image_url,traits,reserve,royalty,status,holder_id,holder_name,price,high_water,mv,earnings,flips,verified,source_url,content_type,external_meta,owner_id,created_at,updated_at)
+    VALUES (${sqlVal(a.id)},${sqlVal(a.name)},${sqlVal(a.type)},${sqlVal(a.collection)},${sqlVal(a.category)},${sqlVal(a.image_url)},${sqlVal(JSON.stringify(a.traits || []))},${sqlVal(a.reserve)},${sqlVal(a.royalty)},${sqlVal(a.status)},${sqlVal(a.holder_id)},${sqlVal(a.holder_name)},${sqlVal(a.price)},${sqlVal(a.high_water)},${sqlVal(a.mv)},${sqlVal(a.earnings)},${sqlVal(a.flips)},${sqlVal(a.verified ? 1 : 0)},${sqlVal(a.source_url || null)},${sqlVal(a.content_type || null)},${sqlVal(JSON.stringify(a.meta || null))},${sqlVal(a.owner_id || null)},${sqlVal(a.created_at)},${sqlVal(a.updated_at)})`);
 }
 async function persistSale(s) {
   await dbExec(`INSERT OR REPLACE INTO al_sales (id,asset_id,seller_name,buyer_id,buyer_name,price,prev_price,round,log,ts)
@@ -379,7 +381,7 @@ async function boot() {
     image_url: r.image_url, traits: safeJson(r.traits, []), reserve: r.reserve, royalty: r.royalty || 0.05,
     status: r.status, holder_id: r.holder_id, holder_name: r.holder_name, holder_avatar: '',
     price: r.price, high_water: r.high_water, mv: r.mv || r.reserve, earnings: r.earnings || 0, flips: r.flips || 0,
-    verified: !!r.verified, source_url: r.source_url, content_type: r.content_type, meta: safeJson(r.external_meta, null),
+    verified: !!r.verified, source_url: r.source_url, content_type: r.content_type, meta: safeJson(r.external_meta, null), owner_id: r.owner_id || null,
     created_at: r.created_at, updated_at: r.updated_at, ladder: [], lastNote: '',
   }));
   const saleRows = await dbQuery('SELECT * FROM al_sales ORDER BY ts DESC LIMIT 200');
@@ -471,6 +473,7 @@ app.post('/api/lookup', async (req, res) => {
 // Consign an asset (may carry verified on-chain metadata).
 app.post('/api/consign', async (req, res) => {
   const b = req.body || {};
+  const owner = sessionFromReq(req); // optional: binds asset to a connected wallet
   const name = String(b.name || '').trim().slice(0, 90);
   if (!name) return res.status(400).json({ error: 'name required' });
   const type = ['counterparty', 'ordinals'].includes(b.type) ? b.type : 'ordinals';
@@ -482,7 +485,7 @@ app.post('/api/consign', async (req, res) => {
     collection: String(b.collection || '').trim().slice(0, 60) || (type === 'ordinals' ? 'Ordinals' : 'Counterparty'),
     category, image_url: String(b.image_url || '').trim().slice(0, 500),
     traits: Array.isArray(b.traits) ? b.traits.slice(0, 8).map((t) => String(t).slice(0, 40)) : [],
-    reserve: round2(reserve), royalty, status: 'looping',
+    reserve: round2(reserve), royalty, status: 'looping', owner_id: owner ? owner.agentId : null,
     holder_id: 'consignor', holder_name: 'You (consignor)', holder_avatar: '📦',
     price: 0, high_water: 0, mv: round2(reserve * rnd(1.0, 1.25)), earnings: 0, flips: 0,
     verified: !!b.verified, source_url: b.source_url ? String(b.source_url).slice(0, 300) : null,
@@ -502,6 +505,12 @@ app.post('/api/asset/:id/:action', async (req, res) => {
   const asset = state.assets.find((a) => a.id === req.params.id);
   if (!asset) return res.status(404).json({ error: 'not found' });
   const action = req.params.action;
+  // Ownership: if the asset was consigned by a connected wallet, only that owner
+  // may pause/resume/withdraw it. Anonymous demo assets stay open (rate-limited).
+  if (['pause', 'resume', 'withdraw'].includes(action) && asset.owner_id) {
+    const sess = sessionFromReq(req);
+    if (!sess || sess.agentId !== asset.owner_id) return res.status(403).json({ error: 'only the consignor may control this asset' });
+  }
   if (action === 'pause') asset.status = 'paused';
   else if (action === 'resume') asset.status = 'looping';
   else if (action === 'withdraw') asset.status = 'withdrawn';
@@ -524,9 +533,8 @@ setInterval(() => { const now = Date.now(); for (const [k, e] of rl) if (now - e
 
 // ══════════════════ Non-custodial wallet connect + auth ═════════════════════
 // The platform NEVER holds a private key. A wallet proves control by signing a
-// server-issued nonce. EVM signatures are verified cryptographically (ethers).
-// BTC signatures are verified where the address type supports it (bitcoinjs-
-// message); taproot/BIP-322 sigs are captured and marked verification-pending.
+// server-issued nonce. EVM signatures are verified cryptographically (ethers);
+// BTC signatures (legacy, segwit AND taproot) are verified via BIP-322.
 const SETTLE_NETWORK = (process.env.ASSET_LOOP_NETWORK || 'signet').toLowerCase(); // never 'mainnet' by default
 const SETTLEMENT_MODE = (process.env.ASSET_LOOP_SETTLEMENT || 'design').toLowerCase(); // 'design' = no fund movement
 const challenges = new Map(); // addressLower -> { message, exp }
@@ -550,11 +558,10 @@ function verifySignature(chain, address, message, signature) {
       return { verified: rec.toLowerCase() === String(address).toLowerCase(), method: 'eip191' };
     }
     if (chain === 'btc') {
-      if (!btcMessage) return { verified: false, method: 'unavailable' };
-      // Taproot (bc1p...) uses BIP-322 which bitcoinjs-message cannot verify.
-      if (/^(bc1p|tb1p)/i.test(address)) return { verified: false, method: 'bip322-pending' };
-      const ok = btcMessage.verify(message, address, signature, undefined, true);
-      return { verified: !!ok, method: 'bip137' };
+      // BIP-322 verifies legacy, segwit AND taproot signatures cryptographically.
+      const ok = bip322.Verifier.verifySignature(address, message, signature);
+      const taproot = /^(bc1p|tb1p|bcrt1p)/i.test(address);
+      return { verified: !!ok, method: taproot ? 'bip322-taproot' : 'bip322' };
     }
   } catch (e) { return { verified: false, method: 'error', error: e.message }; }
   return { verified: false, method: 'unknown' };
@@ -656,16 +663,17 @@ function buildSettlement(asset, buyer) {
   const settlement = {
     id: id('stl'), asset_id: asset.id, asset_name: asset.name,
     buyer_agent_id: buyer.id, buyer_name: buyer.name, buyer_wallet: buyer.wallet_address || null,
-    seller_wallet: asset.seller_wallet || null, price: asset.price, chain: asset.type,
+    seller_wallet: asset.seller_wallet || null, price: asset.price, price_sats: btcToSats(asset.price), chain: asset.type,
     network: SETTLE_NETWORK, mode: SETTLEMENT_MODE,
     status: SETTLEMENT_MODE === 'design' ? 'demo-unsigned' : 'awaiting-signatures',
-    // Illustrative PSBT-style instruction — NOT a broadcastable mainnet tx.
+    // Illustrative PSBT-style instruction — NOT a broadcastable mainnet tx. Money
+    // is expressed in integer SATS (the real swap path carries sats end-to-end).
     psbt_stub: Buffer.from(JSON.stringify({
       type: asset.type === 'ordinals' ? 'ordinal-transfer' : 'counterparty-send',
       inputs: [{ note: `${asset.name} UTXO held by seller ${shortAddr(asset.seller_wallet || 'n/a')}` }],
       outputs: [
         { to: buyer.wallet_address || 'buyer-wallet', asset: asset.name },
-        { to: asset.seller_wallet || 'seller-wallet', btc: asset.price, note: 'payment' },
+        { to: asset.seller_wallet || 'seller-wallet', sats: btcToSats(asset.price), note: 'payment' },
       ],
       network: SETTLE_NETWORK,
     })).toString('base64'),
@@ -765,6 +773,19 @@ app.post('/api/settlement/build-swap', async (req, res) => {
     if (buyerDummyUtxo.value < DUST) return res.status(400).json({ error: `buyer_dummy must be ≥ ${DUST} sats` });
     const buyerPaymentUtxos = [];
     for (const u of b.buyer_payment) buyerPaymentUtxos.push(await verifiedInput(u));
+    // Ordinals-safety guard: the seller UTXO must carry EXACTLY ONE inscription
+    // (else extras would be swept to the buyer), and no buyer payment/dummy input
+    // may carry an inscription (else it would be burned). Fail CLOSED on mainnet.
+    if (SETTLE.ordApiBase()) {
+      const insIds = await SETTLE.inscriptionsOnOutput(inscriptionUtxo.txid, inscriptionUtxo.vout);
+      if (insIds.length !== 1) return res.status(400).json({ error: `inscription UTXO must carry exactly 1 inscription (found ${insIds.length}) — split it first` });
+      for (const u of [buyerDummyUtxo, ...buyerPaymentUtxos]) {
+        const c = await SETTLE.inscriptionsOnOutput(u.txid, u.vout);
+        if (c.length) return res.status(400).json({ error: `buyer input ${u.txid}:${u.vout} carries an inscription — refusing to spend it as payment/dummy` });
+      }
+    } else if (cfg.name === 'mainnet') {
+      return res.status(400).json({ error: 'ASSET_LOOP_ORD_API required on mainnet to guard against multi-inscription sweeps' });
+    }
     const swap = SETTLE.buildAtomicSwap({
       sellerPayoutAddress: b.seller_payout || s.address, buyerAddress: b.buyer_address || s.address,
       inscriptionUtxo, buyerDummyUtxo, buyerPaymentUtxos, priceSats, feeRate,

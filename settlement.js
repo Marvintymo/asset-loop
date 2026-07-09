@@ -232,8 +232,27 @@ async function getUtxoValue(txid, vout) {
   return out.value;
 }
 
+// Ordinals-awareness: list inscriptions on an output via an `ord` server/API.
+// Configure with ASSET_LOOP_ORD_API (e.g. a local ord server or ordinals.com).
+// Returns an array of inscription ids ([] if none). Throws if the API is
+// unreachable so callers can FAIL CLOSED rather than sweep an inscription blindly.
+function ordApiBase() { return process.env.ASSET_LOOP_ORD_API || ''; }
+async function inscriptionsOnOutput(txid, vout) {
+  const base = ordApiBase();
+  if (!base) throw new Error('no ord API configured (set ASSET_LOOP_ORD_API)');
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(`${base.replace(/\/$/, '')}/output/${txid}:${vout}`, { signal: ctrl.signal, headers: { Accept: 'application/json' } });
+    if (!r.ok) throw new Error(`ord output lookup ${r.status}`);
+    const j = await r.json();
+    return Array.isArray(j.inscriptions) ? j.inscriptions : [];
+  } finally { clearTimeout(t); }
+}
+
 module.exports = {
   resolveNetwork, buildSellerOffer, buildBuyerCompletion, finalizeAndBroadcast,
   getUtxos, getFeeRate, getUtxoValue,
   ordinalRoutedOutput, assertOrdinalRouting, buildAtomicSwap,
+  ordApiBase, inscriptionsOnOutput,
 };

@@ -25,16 +25,18 @@ Mainnet stays hard-blocked regardless.
 - **Secret exposure: none.** `OPENROUTER_API_KEY` / `DASHBOARD_TOKEN` never leave the server; agent `api_key` returned only to its creator; `/api/state`, `/market`, beacon all omit it.
 - **LLM prompt-injection XSS: mitigated.** Frontend renders `log[].text` via `esc()` (HTML-escaped); no secrets in the prompt; malformed JSON is caught.
 
+## Closed in a follow-up hardening pass (2nd round)
+- **[was CRITICAL] Real BIP-322 taproot verification — DONE.** `bip322-js` now verifies legacy, segwit AND taproot signatures cryptographically (`verifySignature`, method `bip322-taproot`). Verified end-to-end: a taproot address signs the challenge and authenticates. The browser requests `bip322-simple` for taproot addresses. Unverifiable sessions still cannot settle.
+- **[was HIGH] Multi-inscription UTXO sweep — GUARDED.** `/api/settlement/build-swap` now queries an `ord` API (`ASSET_LOOP_ORD_API`) and refuses unless the seller UTXO carries **exactly one** inscription, and refuses any buyer payment/dummy input that carries an inscription. **Fails CLOSED on mainnet** if no ord API is configured.
+- **[was MED] Money as float — settlement path is integer sats.** The real swap path (`build-swap`) validates `price_sats` as an integer and fetches input values as integer sats from chain; the illustrative quote now also expresses `price_sats`. (The auction *simulation* still uses BTC floats for display — it never touches the fund path.)
+- **[was MED] Ownership model — DONE.** Assets consigned by a connected wallet are bound to `owner_id`; only that owner's verified session may pause/resume/withdraw them (anonymous demo assets stay open, rate-limited).
+
 ## Remaining — for the independent/community audit (NOT fully fixed)
-- **[HIGH] Multi-inscription UTXO sweep** — `buildAtomicSwap` moves the whole seller UTXO to the buyer. If that UTXO carries >1 inscription, extras transfer for the price of one. Needs an ord-indexer check to assert exactly one inscription (and to exclude inscription-bearing UTXOs from buyer payment/dummy selection). Requires ord integration in the live path.
 - **[HIGH] Indexer trust** — values are now cross-checked against chain, but there is still a single indexer, no confirmation-depth requirement, and no double-spend/mempool re-check before broadcast. A real deployment needs multi-source confirmation + N-conf.
-- **[MED] Money as float** — auction prices flow through `round2()` (BTC floats) before `btcToSats`. Carry integer sats end-to-end to guarantee the settled `priceSats` equals the quoted price to the sat.
-- **[MED] Consignment `verified` + `image_url` are self-asserted** (`/api/consign`) — a caller can flag an asset `verified:true` with an arbitrary image. Set `verified` only from a server-side `/api/lookup`; https-only image/source URLs.
-- **[MED] Ownership model** — assets aren't bound to a consignor identity, so pause/withdraw are open (now rate-limited, but any user can withdraw any loop). Add consignor session binding.
-- **[LOW] Taproot key-path finalize** — inputs are added `witnessUtxo`-only. The real-inscription regtest proof finalized fine because the **ord wallet supplied the taproot signing fields**; confirm behavior for arbitrary external taproot signers and populate `tapInternalKey`/sighash explicitly.
+- **[MED] Consignment `verified` + `image_url` are self-asserted** (`/api/consign`) — set `verified` only from a server-side `/api/lookup`; https-only image/source URLs.
+- **[LOW] Taproot key-path finalize** — inputs are added `witnessUtxo`-only. The real-inscription regtest proof finalized fine because the ord wallet supplied the taproot signing fields; confirm behavior for arbitrary external taproot signers and populate `tapInternalKey`/sighash explicitly.
 - **[LOW] Rate-limit `x-forwarded-for`** on `/api/agents/register` is spoofable; behind the dashboard proxy set `trust proxy` and derive the real client IP.
-- **[LOW] `npm audit`: 3 low-severity** — `elliptic` risky-primitive advisory via `bitcoinjs-message → secp256k1`. Fix is a breaking dep bump; low impact for message-signature verification, but update before mainnet.
-- **Real BIP-322 taproot verification** is not implemented (taproot sessions are `verified:false` and now correctly cannot settle). Add `bip322-js` so taproot users can be verified and settle.
+- **[LOW] `npm audit`: 3 low-severity** — `elliptic` advisory via `bitcoinjs-message → secp256k1`. Low impact; update before mainnet.
 
 ## Automated tooling
 - `npm audit --omit=dev`: 3 low (elliptic). `semgrep`: not installable in this sandbox (PEP-668); recommend running `semgrep --config auto` in CI.
