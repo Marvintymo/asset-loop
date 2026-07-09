@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Asset Loop</title>
+<style>
+  :root{
+    --bg:#080a0e;--surface:#0f1117;--surface2:#161922;--surface3:#1e2230;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --text:#dde4f0;--muted:#5a6478;--muted2:#8491a8;
+    --accent:#f7931a;--accent2:#ffb454;--green:#22c55e;--red:#f87171;
+    --purple:#a78bfa;--cyan:#22d3ee;--blue:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;}
+  a{color:var(--accent2);text-decoration:none;} a:hover{text-decoration:underline;}
+  .wrap{max-width:1320px;margin:0 auto;padding:20px 22px 90px;}
+  header.top{display:flex;align-items:center;gap:14px;padding:6px 0 18px;flex-wrap:wrap;}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent),#b45309);display:grid;place-items:center;font-size:20px;box-shadow:0 0 24px rgba(247,147,26,.35);}
+  h1{font-size:20px;font-weight:700;letter-spacing:-.01em;}
+  .sub{color:var(--muted2);font-size:12.5px;}
+  .spacer{flex:1;}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 14px;min-width:84px;}
+  .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .stat .v{font-size:17px;font-weight:700;margin-top:2px;}
+  .stat .v.g{color:var(--green);} .stat .v.a{color:var(--accent2);}
+  .pill{font-size:11px;padding:5px 11px;border-radius:20px;border:1px solid var(--border2);color:var(--muted2);background:var(--surface);white-space:nowrap;}
+  .pill.on{color:var(--green);border-color:rgba(34,197,94,.35);}
+
+  .btn-wallet{background:linear-gradient(135deg,var(--accent),#d97706);color:#1a1206;font-weight:700;padding:9px 16px;border-radius:10px;font-size:13px;}
+  .btn-wallet.connected{background:var(--surface2);color:var(--text);border:1px solid var(--border2);}
+  .btn-wallet:hover{box-shadow:0 4px 16px rgba(247,147,26,.3);}
+
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:20px;align-items:start;}
+  @media (max-width:1000px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;}
+  .card .hd{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .card .hd h2{font-size:13px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--muted2);}
+  .card .bd{padding:14px 16px;}
+
+  label{display:block;font-size:12px;color:var(--muted2);margin:10px 0 5px;}
+  input,select{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:9px;padding:9px 11px;font-size:13.5px;font-family:inherit;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  button{cursor:pointer;font-family:inherit;border:none;}
+  .btn-primary{width:100%;margin-top:14px;background:linear-gradient(135deg,var(--accent),#d97706);color:#1a1206;font-weight:700;padding:11px;border-radius:10px;font-size:14px;transition:transform .06s,box-shadow .2s;}
+  .btn-primary:hover{box-shadow:0 6px 22px rgba(247,147,26,.35);} .btn-primary:active{transform:translateY(1px);}
+  .btn-ghost{background:var(--surface3);color:var(--text);border:1px solid var(--border2);border-radius:9px;padding:9px;font-size:13px;font-weight:600;width:100%;margin-top:10px;}
+  .btn-ghost:hover{border-color:var(--accent);}
+
+  .segtabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:4px;}
+  .segtabs button{flex:1;background:transparent;color:var(--muted2);font-size:12.5px;font-weight:600;padding:7px;border-radius:7px;}
+  .segtabs button.on{background:var(--surface3);color:var(--text);}
+
+  .verify{margin-top:10px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:11px;display:none;}
+  .verify.show{display:block;}
+  .verify .vh{display:flex;gap:10px;align-items:center;margin-bottom:8px;}
+  .verify .vthumb{width:46px;height:46px;border-radius:9px;background:var(--surface3);display:grid;place-items:center;font-size:22px;overflow:hidden;flex-shrink:0;border:1px solid var(--border2);}
+  .verify .vthumb img{width:100%;height:100%;object-fit:cover;}
+  .vbadge{font-size:10px;font-weight:700;color:#062e13;background:var(--green);padding:2px 7px;border-radius:5px;letter-spacing:.03em;}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:11.5px;}
+  .kv .k{color:var(--muted);white-space:nowrap;} .kv .v{color:var(--text);word-break:break-all;text-align:right;}
+
+  .agent{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);}
+  .agent:last-child{border-bottom:none;}
+  .agent .av{width:32px;height:32px;border-radius:9px;background:var(--surface3);display:grid;place-items:center;font-size:17px;flex-shrink:0;}
+  .agent .nm{font-weight:640;font-size:13px;}
+  .agent .pz{color:var(--muted);font-size:11.5px;line-height:1.4;}
+  .agent .meta{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;}
+  .chip{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surface3);color:var(--muted2);border:1px solid var(--border);}
+  .chip.b{color:var(--green);border-color:rgba(34,197,94,.3);}
+  .chip.hold{color:var(--accent2);border-color:rgba(255,180,84,.3);}
+  .chip.ext{color:var(--cyan);border-color:rgba(34,211,238,.35);}
+  .chip.w{color:var(--purple);border-color:rgba(167,139,250,.35);}
+
+  .asset{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;}
+  .asset .ahd{display:flex;gap:13px;padding:14px 16px;}
+  .thumb{width:60px;height:60px;border-radius:12px;background:var(--surface3);display:grid;place-items:center;font-size:26px;overflow:hidden;flex-shrink:0;border:1px solid var(--border2);}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .aname{font-weight:700;font-size:15.5px;}
+  .atype{display:inline-block;font-size:10px;padding:2px 7px;border-radius:5px;margin-left:7px;vertical-align:middle;letter-spacing:.04em;text-transform:uppercase;font-weight:700;}
+  .t-ordinals{background:rgba(247,147,26,.16);color:var(--accent2);}
+  .t-counterparty{background:rgba(167,139,250,.16);color:var(--purple);}
+  .vchip{display:inline-block;font-size:9.5px;font-weight:700;color:var(--green);border:1px solid rgba(34,197,94,.4);border-radius:5px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
+  .acol{color:var(--muted);font-size:12px;margin-top:2px;}
+  .cat{font-size:10.5px;color:var(--cyan);}
+  .apr{text-align:right;margin-left:auto;}
+  .apr .big{font-size:20px;font-weight:750;}
+  .apr .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+  .apr .up{color:var(--green);font-size:11.5px;font-weight:600;}
+
+  .abar{display:flex;align-items:center;gap:10px;padding:8px 16px;background:var(--surface2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .hold{font-size:12px;color:var(--muted2);} .hold b{color:var(--text);}
+  .status{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;}
+  .s-looping{background:rgba(34,197,94,.14);color:var(--green);}
+  .s-paused{background:rgba(255,180,84,.14);color:var(--accent2);}
+  .s-withdrawn{background:rgba(248,113,113,.14);color:var(--red);}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .mini{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;}
+  .mini button{background:var(--surface3);color:var(--muted2);border:1px solid var(--border2);border-radius:7px;padding:5px 10px;font-size:11.5px;}
+  .mini button:hover{color:var(--text);border-color:var(--accent);}
+  .mini button.bid{color:var(--accent2);border-color:rgba(255,180,84,.4);}
+
+  .abody{padding:12px 16px;display:grid;grid-template-columns:150px 1fr;gap:16px;}
+  @media (max-width:640px){.abody{grid-template-columns:1fr;}}
+  .spark{height:56px;width:100%;}
+  .earn{font-size:12px;color:var(--muted2);margin-top:6px;} .earn b{color:var(--green);}
+  .note{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:6px;}
+  .meta-line{font-size:10.5px;color:var(--muted);margin-top:5px;word-break:break-all;}
+
+  .feed{max-height:230px;overflow-y:auto;}
+  .feed::-webkit-scrollbar{width:6px;}.feed::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px;}
+  .msg{display:flex;gap:8px;padding:5px 0;font-size:12.5px;border-bottom:1px dashed var(--border);}
+  .msg:last-child{border-bottom:none;}
+  .msg .who{font-weight:640;color:var(--accent2);}
+  .msg.system{color:var(--muted);font-style:italic;} .msg.win .who{color:var(--green);}
+
+  .sale{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .sale:last-child{border-bottom:none;}
+  .sale .sav{font-size:18px;} .sale .sp{margin-left:auto;font-weight:700;} .sale .rd{font-size:10px;color:var(--muted);}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:24px 10px;}
+  .flash{animation:flash .9s ease;} @keyframes flash{0%{background:rgba(247,147,26,.18)}100%{background:transparent}}
+  .tabs{display:flex;gap:4px;} .tabs button{background:transparent;color:var(--muted);font-size:12px;padding:5px 10px;border-radius:7px;} .tabs button.on{background:var(--surface3);color:var(--text);}
+  code,pre{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11.5px;}
+  pre{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:11px;overflow-x:auto;color:var(--muted2);white-space:pre-wrap;word-break:break-word;}
+  .devkey{background:var(--surface2);border:1px dashed rgba(34,211,238,.4);border-radius:9px;padding:9px;margin-top:9px;font-size:11.5px;color:var(--cyan);word-break:break-all;display:none;}
+  .devkey.show{display:block;}
+  details summary{cursor:pointer;color:var(--muted2);font-size:13px;font-weight:600;}
+
+  /* settlement */
+  .stl{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
+  .stl:last-child{border-bottom:none;}
+  .stl .st{font-size:10px;padding:2px 7px;border-radius:6px;background:var(--surface3);color:var(--muted2);border:1px solid var(--border);margin-left:auto;}
+  .banner{background:linear-gradient(90deg,rgba(247,147,26,.08),transparent);border:1px solid rgba(247,147,26,.25);border-radius:11px;padding:10px 12px;font-size:12px;color:var(--accent2);margin-bottom:12px;}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-bg.show{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:400px;padding:20px;}
+  .modal h3{font-size:16px;margin-bottom:4px;}
+  .modal .mm{font-size:12px;color:var(--muted2);margin-bottom:14px;}
+  .wbtn{display:flex;align-items:center;gap:10px;width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:11px;padding:11px 13px;margin-bottom:8px;color:var(--text);font-size:13.5px;font-weight:600;text-align:left;}
+  .wbtn:hover{border-color:var(--accent);} .wbtn .we{font-size:20px;} .wbtn .wt{flex:1;} .wbtn .ws{font-size:11px;color:var(--muted);font-weight:400;}
+  .wbtn:disabled{opacity:.4;cursor:not-allowed;}
+  .modal .close{background:transparent;color:var(--muted2);font-size:13px;width:100%;margin-top:6px;padding:8px;}
+  .kindsel{display:flex;gap:6px;margin-bottom:12px;}
+  .kindsel button{flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);border-radius:9px;padding:8px;font-size:12.5px;font-weight:600;}
+  .kindsel button.on{border-color:var(--accent);color:var(--text);background:var(--surface3);}
+  .authmsg{font-size:12px;color:var(--accent2);margin-top:6px;min-height:16px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">🔁</div>
+    <div>
+      <h1>Asset Loop</h1>
+      <div class="sub">Consign a real Counterparty / Ordinals asset — wallet-connected AI agents & collectors negotiate and flip it upward.</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="llmpill" title="AI agents reason with a real LLM when an OPENROUTER_API_KEY is set for this group (via the dashboard). Until then, built-in reasoning is used.">LLM: —</span>
+    <span class="pill" id="beaconpill" title="Public agent-discovery beacon: broadcasts this marketplace + live assets to autonomous agents. Manifest at /.well-known/asset-loop.json, live pings at /api/beacon/stream.">beacon: —</span>
+    <span class="pill" id="stlpill">settlement: —</span>
+    <button class="btn-wallet" id="wallet-btn">Connect wallet</button>
+  </header>
+
+  <div class="stats" id="stats" style="margin-bottom:16px"></div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="hd"><span>📦</span><h2>Consign an asset</h2></div>
+        <div class="bd">
+          <div class="segtabs">
+            <button id="mode-chain" class="on">⛓ On-chain lookup</button>
+            <button id="mode-manual">✎ Manual</button>
+          </div>
+          <div id="pane-chain">
+            <label>Protocol</label>
+            <select id="l-type">
+              <option value="ordinals">Ordinals (BTC inscription)</option>
+              <option value="counterparty">Counterparty (XCP asset)</option>
+            </select>
+            <label id="l-ref-label">Inscription ID or number</label>
+            <input id="l-ref" placeholder="e.g. 0  ·  or 6fb976…i0" />
+            <button class="btn-ghost" id="lookup-btn">Fetch on-chain metadata →</button>
+            <div id="lookup-msg" class="note" style="text-align:center"></div>
+            <div class="verify" id="verify">
+              <div class="vh">
+                <div class="vthumb" id="v-thumb">🖼️</div>
+                <div style="min-width:0"><div style="font-weight:700" id="v-name"></div>
+                  <span class="vbadge">✓ VERIFIED ON-CHAIN</span></div>
+              </div>
+              <div class="kv" id="v-kv"></div>
+            </div>
+          </div>
+          <div id="pane-manual" style="display:none">
+            <label>Asset name</label>
+            <input id="f-name" placeholder="e.g. RAREPEPE #472 / Frog Inscription 8021" />
+            <div class="row2">
+              <div><label>Protocol</label><select id="f-type"><option value="ordinals">Ordinals</option><option value="counterparty">Counterparty</option></select></div>
+              <div><label>Category</label><select id="f-category"></select></div>
+            </div>
+            <label>Collection</label>
+            <input id="f-collection" placeholder="e.g. Rare Pepe / Bitcoin Frogs" />
+            <label>Image URL <span style="color:var(--muted)">(optional)</span></label>
+            <input id="f-image" placeholder="https://…" />
+          </div>
+          <div class="row2" style="margin-top:8px">
+            <div><label>Reserve (BTC)</label><input id="f-reserve" type="number" step="0.001" value="0.08" /></div>
+            <div><label>Category</label><select id="f-category2"></select></div>
+          </div>
+          <label>Your royalty on every flip (%)</label>
+          <input id="f-royalty" type="number" step="1" value="5" />
+          <button class="btn-primary" id="consign-btn">Send to the Loop →</button>
+          <div id="consign-msg" class="note" style="text-align:center"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="hd"><span>🤖</span><h2>Buyer-agents & collectors</h2><span class="spacer"></span><span class="chip w" id="wallet-count">0 wallets</span></div>
+        <div class="bd" id="agents"></div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><span>🛰️</span><h2>Developers · agent API</h2></div>
+        <div class="bd">
+          <div style="font-size:12.5px;color:var(--muted2);margin-bottom:8px">Outside AI agents connect their own wallet (or an API key) to poll the market and bid.</div>
+          <button class="btn-ghost" id="reg-btn">Spin up a demo API agent</button>
+          <div class="devkey" id="devkey"></div>
+          <details style="margin-top:12px">
+            <summary>API reference</summary>
+            <pre id="apidocs"></pre>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <div class="banner" id="settle-banner"></div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="hd"><span>🔁</span><h2>Active loops</h2><span class="spacer"></span>
+          <div class="tabs" id="filter-tabs">
+            <button data-f="all" class="on">All</button>
+            <button data-f="looping">Looping</button>
+            <button data-f="paused">Paused</button>
+          </div>
+        </div>
+        <div class="bd" id="loops"><div class="empty">No assets in the loop yet. Fetch a real one on the left to begin.</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="hd"><span>🔐</span><h2>Settlements · non-custodial</h2><span class="spacer"></span><span class="chip" id="settle-mode">—</span></div>
+        <div class="bd"><div id="settlements"><div class="empty">When a wallet-connected bidder wins, a signed settlement instruction opens here.</div></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="hd"><span>⚖️</span><h2>Settlement studio · signet (Phase 2)</h2><span class="spacer"></span><span class="chip" id="studio-net">—</span></div>
+        <div class="bd">
+          <div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Real atomic swap on Bitcoin <b>signet</b> (test coins). Seller signs an offer; buyer completes + pays in one transaction. Mainnet is blocked until audited. Needs a Bitcoin wallet (UniSat/OKX/Leather) with funded signet UTXOs — <a href="https://signetfaucet.com" target="_blank">faucet ↗</a>. · <a href="SECURITY-AUDIT.md" target="_blank">📋 audit package ↗</a> · <a href="RUNBOOK-SIGNET.md" target="_blank">🧪 signet dry-run runbook ↗</a> · <a href="AUDIT-HANDOFF.md" target="_blank">🤝 auditor handoff ↗</a> · <a href="PROOF-REGTEST.md" target="_blank">✅ regtest proof ↗</a> · <a href="PRE-AUDIT.md" target="_blank">🛡️ pre-audit ↗</a> · <a href="COMMUNITY-REVIEW.md" target="_blank">👥 community review ↗</a></div>
+          <details style="margin-bottom:8px">
+            <summary>🧭 Guided signet test-flip (do this before mainnet)</summary>
+            <div style="margin-top:8px;font-size:12px;color:var(--muted2);line-height:1.7">
+              <b>Goal:</b> prove the connect → co-sign → atomic-broadcast plumbing with worthless test coins.<br>
+              1. Install UniSat/OKX/Leather, switch it to <b>Signet</b>.<br>
+              2. Fund your address from <a href="https://signetfaucet.com" target="_blank">signetfaucet.com</a> (wait 1 confirmation).<br>
+              3. <b>Connect wallet</b> (top-right), then in ① below click <b>Load my signet UTXOs</b> and pick one.<br>
+              4. Set a price, <b>Build & sign offer</b>, copy the PSBT.<br>
+              5. With a second signet wallet (the buyer), paste it in ②, then <b>Complete, sign & broadcast</b>.<br>
+              6. Open the returned tx on the explorer — confirm payment→seller and the UTXO→buyer in one tx.<br>
+              <span style="color:var(--accent2)">⚠ Test with PLAIN UTXOs, not a real inscription — audit finding #1 (inscription sat routing) must be fixed first.</span>
+            </div>
+          </details>
+          <details open>
+            <summary>✅ Routing-verified swap — one-click signet self-test (finding #1 fix)</summary>
+            <div style="margin-top:8px;font-size:12px;color:var(--muted2)">Builds a dummy-padded atomic swap from your own signet UTXOs (needs ≥3), machine-verifies the inscription sat routes to the buyer output, then you sign all inputs and it broadcasts. Proves the fix end-to-end.</div>
+            <button class="btn-ghost" id="st-selftest">Build routing-verified swap & broadcast (signet)</button>
+            <div class="note" id="st-selftest-msg" style="text-align:center"></div>
+          </details>
+          <details>
+            <summary>① Seller — build & sign an offer (legacy listing flow)</summary>
+            <div style="margin-top:8px">
+              <button class="btn-ghost" id="st-load-utxos" style="margin-top:0">Load my signet UTXOs</button>
+              <div id="st-utxo-list" style="font-size:11px;color:var(--muted2);margin:6px 0"></div>
+              <label>Inscription / UTXO (txid:vout)</label>
+              <input id="st-utxo" placeholder="abcd…ef:0" />
+              <label>Price (BTC, signet)</label>
+              <input id="st-price" type="number" step="0.0001" value="0.0005" />
+              <button class="btn-ghost" id="st-offer-btn">Build & sign offer →</button>
+              <div class="note" id="st-offer-msg" style="text-align:center"></div>
+              <textarea id="st-offer-out" placeholder="Signed offer PSBT appears here — send it to your buyer." style="display:none;width:100%;margin-top:8px;height:70px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);border-radius:9px;padding:8px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+            </div>
+          </details>
+          <details style="margin-top:8px">
+            <summary>② Buyer — complete, sign & broadcast</summary>
+            <div style="margin-top:8px">
+              <label>Seller's signed offer PSBT</label>
+              <textarea id="st-in" placeholder="paste offer PSBT" style="width:100%;height:60px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:9px;padding:8px;font-family:ui-monospace,monospace;font-size:11px"></textarea>
+              <div class="row2">
+                <div><label>Inscription value (sats)</label><input id="st-insval" type="number" value="10000" /></div>
+                <div><label>Price (sats)</label><input id="st-pricesats" type="number" value="50000" /></div>
+              </div>
+              <button class="btn-ghost" id="st-complete-btn">Complete, sign & broadcast →</button>
+              <div class="note" id="st-buy-msg" style="text-align:center"></div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><span>⚡</span><h2>Global flip activity</h2></div>
+        <div class="bd"><div id="sales"><div class="empty">Sales will stream here as agents trade.</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WALLET MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3>Connect a wallet</h3>
+    <div class="mm">Self-custody. You sign a message to prove control — the platform never sees your keys and cannot move funds.</div>
+    <div class="kindsel" id="kindsel">
+      <button data-kind="user" class="on">👛 Human collector</button>
+      <button data-kind="agent">🛰️ AI agent</button>
+    </div>
+    <div id="wallet-list"></div>
+    <div class="authmsg" id="authmsg"></div>
+    <button class="close" id="modal-close">Cancel</button>
+  </div>
+</div>
+
+<script>
+const $=(s)=>document.querySelector(s);
+let CATS=[],filterMode='all',lastSaleId=null,STATE={},lookedUp=null,consignMode='chain';
+let SESSION=localStorage.getItem('al_session')||null, ME=null, connectKind='user';
+let activeProvider=localStorage.getItem('al_prov')||null, activeChain=localStorage.getItem('al_chain')||null;
+const fmt=(n)=>(n||0).toFixed(3);
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const authHeaders=()=>SESSION?{'x-session':SESSION}:{};
+const b64ToHex=(b64)=>{const bin=atob(b64);let h='';for(let i=0;i<bin.length;i++)h+=bin.charCodeAt(i).toString(16).padStart(2,'0');return h;};
+const hexToB64=(hex)=>{let bin='';for(let i=0;i<hex.length;i+=2)bin+=String.fromCharCode(parseInt(hex.substr(i,2),16));return btoa(bin);};
+// Sign a PSBT (base64 in, base64 out) with the connected Bitcoin wallet.
+async function signPsbtB64(psbtB64,toSignInputs){
+  const hex=b64ToHex(psbtB64);
+  let signed;
+  if(activeProvider==='unisat') signed=await window.unisat.signPsbt(hex,{autoFinalized:false,toSignInputs});
+  else if(activeProvider==='okx') signed=await window.okxwallet.bitcoin.signPsbt(hex,{autoFinalized:false,toSignInputs});
+  else if(activeProvider==='leather'){const idxs=toSignInputs.map(t=>t.index);const r=await window.LeatherProvider.request('signPsbt',{hex,signAtIndex:idxs,network:'signet',allowedSighash:toSignInputs.map(t=>t.sighashTypes&&t.sighashTypes[0]).filter(x=>x!=null)});return r.result.hex?hexToB64(r.result.hex):psbtB64;}
+  else throw new Error('Connect a Bitcoin wallet (UniSat / OKX / Leather) to sign a signet settlement.');
+  return hexToB64(signed);
+}
+
+/* ═══════════════ WALLET CONNECT (non-custodial) ═══════════════ */
+function detectProviders(){
+  const p=[];
+  if(window.unisat) p.push({key:'unisat',chain:'btc',emoji:'🟠',name:'UniSat',sub:'Bitcoin / Ordinals'});
+  if(window.okxwallet&&window.okxwallet.bitcoin) p.push({key:'okx',chain:'btc',emoji:'⬛',name:'OKX Wallet',sub:'Bitcoin / Ordinals'});
+  if(window.LeatherProvider) p.push({key:'leather',chain:'btc',emoji:'🟫',name:'Leather',sub:'Bitcoin / Stacks'});
+  if(window.ethereum) p.push({key:'evm',chain:'evm',emoji:'🦊',name:(window.ethereum.isMetaMask?'MetaMask':'Web3 wallet'),sub:'Ethereum / EVM'});
+  return p;
+}
+async function getAddress(prov){
+  if(prov.key==='unisat'){const a=await window.unisat.requestAccounts();return a[0];}
+  if(prov.key==='okx'){const r=await window.okxwallet.bitcoin.connect();return r.address;}
+  if(prov.key==='leather'){const r=await window.LeatherProvider.request('getAddresses');
+    const list=r.result&&r.result.addresses||[];const seg=list.find(x=>/^(bc1q|tb1q)/i.test(x.address))||list.find(x=>x.address&&!/^(bc1p)/i.test(x.address))||list[0];return seg&&seg.address;}
+  if(prov.key==='evm'){const a=await window.ethereum.request({method:'eth_requestAccounts'});return a[0];}
+}
+async function signMsg(prov,address,message){
+  if(prov.key==='unisat') return await window.unisat.signMessage(message);
+  if(prov.key==='okx') return await window.okxwallet.bitcoin.signMessage(message,'ecdsa');
+  if(prov.key==='leather'){const r=await window.LeatherProvider.request('signMessage',{message,paymentType:'p2wpkh'});return r.result.signature;}
+  if(prov.key==='evm') return await window.ethereum.request({method:'personal_sign',params:[message,address]});
+}
+async function connectWallet(prov){
+  const am=$('#authmsg');
+  try{
+    am.textContent='Requesting address…';
+    const address=await getAddress(prov);
+    if(!address){am.textContent='No address returned.';return;}
+    am.textContent='Requesting signing challenge…';
+    const ch=await fetch(`api/auth/challenge?address=${encodeURIComponent(address)}&chain=${prov.chain}`).then(r=>r.json());
+    if(!ch.ok){am.textContent=ch.error||'challenge failed';return;}
+    am.textContent='Approve the signature in your wallet…';
+    const signature=await signMsg(prov,address,ch.message);
+    am.textContent='Verifying…';
+    const body={address,chain:prov.chain,signature,kind:connectKind};
+    if(connectKind==='agent'){body.budget=parseFloat(prompt('Agent bidding budget in BTC?','3'))||3;body.persona='Wallet-connected autonomous agent.';}
+    const v=await fetch('api/auth/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!v.ok){am.textContent=v.error||'verify failed';return;}
+    SESSION=v.session;localStorage.setItem('al_session',SESSION);
+    activeProvider=prov.key;activeChain=prov.chain;localStorage.setItem('al_prov',prov.key);localStorage.setItem('al_chain',prov.chain);
+    ME=v;
+    am.textContent=v.verified?'✓ Verified & connected':'Connected (signature captured)';
+    setTimeout(closeModal,700);
+    refreshMe();poll();
+  }catch(e){am.textContent=(e&&e.message)||'connection cancelled';}
+}
+function renderWalletList(){
+  const provs=detectProviders();const list=$('#wallet-list');
+  const installHtml=`<div style="font-size:12.5px;color:var(--muted2);line-height:1.6;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <b style="color:var(--accent2)">Need a Bitcoin wallet to settle.</b> MetaMask is EVM-only — it can bid, but <u>cannot sign Bitcoin signet swaps</u>. Install a BTC wallet, then <b>switch it to Signet</b> in its settings and reload:<br>
+    • <a href="https://unisat.io" target="_blank">UniSat</a> — settings ▸ Network ▸ Signet<br>
+    • <a href="https://www.okx.com/web3" target="_blank">OKX Wallet</a> — has a signet mode<br>
+    • <a href="https://leather.io" target="_blank">Leather</a> — network ▸ Signet</div>`;
+  if(!provs.length){
+    list.innerHTML=`<div style="font-size:12.5px;color:var(--muted2)">No wallet extension detected.</div>`+installHtml;
+    return;
+  }
+  const hasBtc=provs.some(p=>p.chain==='btc');
+  list.innerHTML=provs.map((p,i)=>`<button class="wbtn" data-i="${i}"><span class="we">${p.emoji}</span><span class="wt">${p.name}<div class="ws">${p.sub}${p.chain==='evm'?' · bids only, cannot settle':''}</div></span><span style="color:var(--muted)">›</span></button>`).join('')
+    + (hasBtc?'':installHtml);
+  list.querySelectorAll('.wbtn').forEach(b=>b.onclick=()=>connectWallet(provs[+b.dataset.i]));
+}
+function openModal(){renderWalletList();$('#authmsg').textContent='';$('#modal-bg').classList.add('show');}
+function closeModal(){$('#modal-bg').classList.remove('show');}
+async function refreshMe(){
+  if(!SESSION){ME=null;renderWalletBtn();return;}
+  try{const r=await fetch('api/auth/me',{headers:authHeaders()}).then(x=>x.json());
+    if(r.connected){ME=r;}else{ME=null;SESSION=null;localStorage.removeItem('al_session');}
+  }catch(e){}
+  renderWalletBtn();
+}
+function renderWalletBtn(){
+  const b=$('#wallet-btn');
+  if(ME&&ME.connected!==false){
+    b.className='btn-wallet connected';
+    const kindEmoji=ME.kind==='agent'?'🛰️':'👛';
+    b.innerHTML=`${kindEmoji} ${esc(ME.address? (ME.address.slice(0,6)+'…'+ME.address.slice(-4)):'')} ${ME.verified?'✓':'•'}`;
+    b.title='Click to disconnect';
+  }else{b.className='btn-wallet';b.textContent='Connect wallet';b.title='';}
+}
+$('#wallet-btn').onclick=()=>{
+  if(ME&&ME.connected!==false){if(confirm('Disconnect wallet?')){SESSION=null;ME=null;localStorage.removeItem('al_session');renderWalletBtn();poll();}}
+  else openModal();
+};
+$('#modal-close').onclick=closeModal;
+$('#modal-bg').onclick=(e)=>{if(e.target===$('#modal-bg'))closeModal();};
+$('#kindsel').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('#kindsel').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');connectKind=b.dataset.kind;});
+
+/* ═══════════════ BIDDING (wallet-gated) ═══════════════ */
+async function bid(assetId,name,ask){
+  if(!SESSION){openModal();return;}
+  const v=prompt(`Your max bid for "${name}" in BTC (current ask ${ask}):`, (ask*1.3).toFixed(3));
+  if(v===null)return;
+  const max=parseFloat(v);if(!Number.isFinite(max)||max<=0){alert('Enter a positive amount.');return;}
+  const r=await fetch('api/bid',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({asset_id:assetId,max_price:max})}).then(x=>x.json());
+  if(r.ok){alert(`Bid placed: standing max ${r.standing_max} ₿ on ${r.asset}. It now competes in the live auction.`);poll();}
+  else alert(r.error||'bid failed');
+}
+window.bid=bid;
+
+/* ═══════════════ RENDER ═══════════════ */
+function sparkline(vals){
+  if(!vals||vals.length<2) return '<div style="color:var(--muted);font-size:11px;padding-top:18px">awaiting first sale…</div>';
+  const w=140,h=56,pad=4,min=Math.min(...vals),max=Math.max(...vals),rng=(max-min)||1;
+  const pts=vals.map((v,i)=>`${(pad+(i/(vals.length-1))*(w-pad*2)).toFixed(1)},${(h-pad-((v-min)/rng)*(h-pad*2)).toFixed(1)}`).join(' ');
+  const col=vals[vals.length-1]>=vals[0]?'var(--green)':'var(--red)';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+function renderStats(s){
+  $('#stats').innerHTML=`
+    <div class="stat"><div class="k">Your earnings</div><div class="v g">${fmt(s.totalEarnings)} ₿</div></div>
+    <div class="stat"><div class="k">Total flips</div><div class="v a">${s.totalFlips}</div></div>
+    <div class="stat"><div class="k">Active loops</div><div class="v">${s.activeLoops}</div></div>
+    <div class="stat"><div class="k">Agents</div><div class="v">${s.agentCount}</div></div>
+    <div class="stat"><div class="k">Wallets</div><div class="v">${s.connectedWallets||0}</div></div>
+    <div class="stat"><div class="k">Settlements</div><div class="v">${s.settlements||0}</div></div>`;
+  $('#wallet-count').textContent=`${s.connectedWallets||0} wallets`;
+}
+function renderLLM(llm){const p=$('#llmpill');if(llm&&llm.active){p.className='pill on';p.textContent='LLM agents: ● live';}else{p.className='pill';p.textContent='LLM: off · add OPENROUTER_API_KEY';}}
+function renderBeacon(b){const p=$('#beaconpill');if(!b){p.textContent='beacon: —';return;}p.className='pill on';p.textContent=`📡 beacon: ${b.subscribers||0} agents · ${b.pings||0} pings`;}
+function renderStl(st){const p=$('#stlpill');p.className='pill';p.textContent=`settlement: ${st?st.mode+' · '+st.network:'—'}`;$('#settle-mode').textContent=st?`${st.mode} / ${st.network}`:'—';
+  $('#settle-banner').innerHTML=`🔐 <b>Non-custodial by design.</b> Wallets stay self-custody; the platform coordinates signed transfers but never holds keys. Settlement mode: <b>${st?st.mode:'—'}</b> on <b>${st?st.network:'—'}</b> — no mainnet funds move in this mode.`;}
+function renderAgents(agents){
+  const order=agents.slice().sort((a,b)=>(b.wallet?1:0)-(a.wallet?1:0));
+  $('#agents').innerHTML=order.map(a=>`
+    <div class="agent">
+      <div class="av">${a.avatar||'🤖'}</div>
+      <div style="min-width:0">
+        <div class="nm">${esc(a.name)} ${a.kind==='user'?'<span class="chip w">collector</span>':a.is_external?'<span class="chip ext">agent</span>':''}</div>
+        <div class="pz">${esc(a.persona)}</div>
+        <div class="meta">
+          <span class="chip b">budget ${fmt(a.budget)} ₿</span>
+          ${a.wallet?`<span class="chip w">👛 ${esc(a.wallet)}</span>`:`<span class="chip">aggr ${(a.aggression*100|0)}%</span>`}
+          ${a.holdings.length?`<span class="chip hold">holds ${a.holdings.length}</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+function renderLoops(assets){
+  let list=filterMode==='all'?assets:assets.filter(a=>a.status===filterMode);
+  if(!list.length){$('#loops').innerHTML='<div class="empty">Nothing here yet.</div>';return;}
+  $('#loops').innerHTML=list.map(a=>{
+    const sale=(STATE.sales||[]).filter(s=>s.asset_id===a.id)[0];
+    const feed=sale?sale.log:[];
+    const up=a.flips>0?`▲ ${((a.price/(a.reserve||a.price))*100-100).toFixed(0)}% over reserve`:'reserve '+fmt(a.reserve)+' ₿';
+    const icon=a.type==='counterparty'?'🎴':'🟧';
+    const ask=fmt(a.flips>0?a.price:a.reserve);
+    return `
+    <div class="asset">
+      <div class="ahd">
+        <div class="thumb">${a.image_url?`<img src="${esc(a.image_url)}" referrerpolicy="no-referrer" onerror="this.parentNode.textContent='${icon}'"/>`:icon}</div>
+        <div style="min-width:0">
+          <div class="aname">${esc(a.name)}<span class="atype t-${a.type}">${a.type}</span>${a.verified?'<span class="vchip">✓ on-chain</span>':''}</div>
+          <div class="acol">${esc(a.collection)} · <span class="cat">#${esc(a.category)}</span>${a.source_url?` · <a href="${esc(a.source_url)}" target="_blank" rel="noopener">explorer ↗</a>`:''}</div>
+        </div>
+        <div class="apr">
+          <div class="lbl">${a.flips>0?'Last clear':'Reserve'}</div>
+          <div class="big">${ask} ₿</div>
+          <div class="up">${up}</div>
+        </div>
+      </div>
+      <div class="abar">
+        <span class="hold">Holder: <b>${a.holder_avatar||''} ${esc(a.holder_name)}</b></span>
+        <span class="status s-${a.status}">${a.status==='looping'?'<span class="dot"></span>':''}${a.status}</span>
+        <div class="mini">
+          ${a.status==='looping'?`<button class="bid" onclick="bid('${a.id}','${esc(a.name).replace(/'/g,'')}',${a.flips>0?a.price:a.reserve})">${SESSION?'Bid':'Connect to bid'}</button>`:''}
+          ${a.status==='looping'?`<button onclick="act('${a.id}','pause')">Pause</button>`:''}
+          ${a.status==='paused'?`<button onclick="act('${a.id}','resume')">Resume</button>`:''}
+          ${a.status!=='withdrawn'?`<button onclick="act('${a.id}','step')">Step ▸</button>`:''}
+          ${a.status!=='withdrawn'?`<button onclick="act('${a.id}','withdraw')">Withdraw</button>`:''}
+        </div>
+      </div>
+      <div class="abody">
+        <div>
+          ${sparkline(a.ladder)}
+          <div class="earn">You earned <b>${fmt(a.earnings)} ₿</b> · ${a.flips} flip${a.flips===1?'':'s'}</div>
+          <div class="note">${esc(a.lastNote||'')}</div>
+          ${a.meta?`<div class="meta-line">${Object.entries(a.meta).slice(0,3).map(([k,v])=>`${esc(k)}: ${esc(v)}`).join(' · ')}</div>`:''}
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Latest negotiation</div>
+          <div class="feed">
+            ${feed.length?feed.map(m=>`
+              <div class="msg ${m.who==='system'?'system':''} ${/Wins at/.test(m.text)?'win':''}">
+                ${m.avatar?`<span>${m.avatar}</span>`:''}
+                <div>${m.who!=='system'?`<span class="who">${esc(m.who)}</span> `:''}${esc(m.text)}${m.llm?' <span class="chip ext" style="font-size:9px">LLM</span>':''}</div>
+              </div>`).join(''):'<div class="empty" style="padding:14px">Waiting for the next auction round…</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderSettlements(list){
+  if(!list||!list.length){$('#settlements').innerHTML='<div class="empty">When a wallet-connected bidder wins, a signed settlement instruction opens here.</div>';return;}
+  $('#settlements').innerHTML=list.map(s=>`
+    <div class="stl">
+      <span>${s.chain==='counterparty'?'🎴':'🟧'}</span>
+      <div style="min-width:0">
+        <div><b>${esc(s.asset_name)}</b> → ${esc(s.buyer_name)}</div>
+        <div class="rd" style="font-size:10px;color:var(--muted)">${s.buyer_wallet?'buyer '+esc(s.buyer_wallet.slice(0,10))+'…':'buyer wallet'} · ${fmt(s.price)} ₿ · ${esc(s.network||'')}</div>
+      </div>
+      <span class="st">${esc(s.status)}</span>
+    </div>`).join('');
+}
+function renderSales(sales){
+  if(!sales.length)return;
+  $('#sales').innerHTML=sales.map(s=>{
+    const delta=s.prev_price>0?` <span class="up" style="color:var(--green);font-size:11px">+${fmt(s.price-s.prev_price)}</span>`:'';
+    return `<div class="sale">
+      <span class="sav">${s.buyer_avatar||'🤖'}</span>
+      <div><div><b>${esc(s.buyer_name)}</b>${s.external?' <span class="chip ext" style="font-size:9px">ext</span>':''} bought <b>${esc(s.asset_name||'asset')}</b></div>
+      <div class="rd">from ${esc(s.seller_name)} · round ${s.round}</div></div>
+      <div class="sp">${fmt(s.price)} ₿${delta}</div></div>`;
+  }).join('');
+}
+
+async function poll(){
+  try{
+    STATE=await fetch('api/state').then(r=>r.json());
+    if(!CATS.length){CATS=STATE.categories;const opts=CATS.map(c=>`<option value="${c}">${c}</option>`).join('');$('#f-category').innerHTML=opts;$('#f-category2').innerHTML=opts;}
+    renderLLM(STATE.llm);renderBeacon(STATE.beacon);renderStl(STATE.settlement);renderStats(STATE.stats);renderAgents(STATE.agents);renderLoops(STATE.assets);renderSettlements(STATE.settlements);
+    if(STATE.sales&&STATE.sales.length){
+      const top=STATE.sales[0].id;renderSales(STATE.sales);
+      if(top!==lastSaleId&&lastSaleId!==null){const el=$('#sales').firstElementChild;if(el)el.classList.add('flash');}
+      lastSaleId=top;
+    }
+  }catch(e){}
+}
+async function act(id,action){await fetch(`api/asset/${id}/${action}`,{method:'POST'});poll();}
+window.act=act;
+
+/* consign mode toggle */
+$('#mode-chain').onclick=()=>{consignMode='chain';$('#mode-chain').classList.add('on');$('#mode-manual').classList.remove('on');$('#pane-chain').style.display='';$('#pane-manual').style.display='none';};
+$('#mode-manual').onclick=()=>{consignMode='manual';lookedUp=null;$('#mode-manual').classList.add('on');$('#mode-chain').classList.remove('on');$('#pane-manual').style.display='';$('#pane-chain').style.display='none';};
+$('#l-type').onchange=()=>{$('#l-ref-label').textContent=$('#l-type').value==='counterparty'?'Counterparty asset name':'Inscription ID or number';$('#l-ref').placeholder=$('#l-type').value==='counterparty'?'e.g. RAREPEPE':'e.g. 0  ·  or 6fb976…i0';};
+
+$('#lookup-btn').onclick=async()=>{
+  const type=$('#l-type').value,ref=$('#l-ref').value.trim();
+  if(!ref){$('#lookup-msg').textContent='Enter a reference first.';return;}
+  $('#lookup-btn').textContent='Fetching on-chain…';$('#lookup-msg').textContent='';
+  try{
+    const j=await fetch('api/lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,ref})}).then(r=>r.json());
+    $('#lookup-btn').textContent='Fetch on-chain metadata →';
+    if(!j.ok){$('#lookup-msg').textContent=j.error||'Lookup failed';$('#verify').classList.remove('show');lookedUp=null;return;}
+    lookedUp=j.data;
+    $('#v-name').textContent=j.data.name;
+    const icon=type==='counterparty'?'🎴':'🟧';
+    $('#v-thumb').innerHTML=j.data.image_url?`<img src="${esc(j.data.image_url)}" referrerpolicy="no-referrer" onerror="this.parentNode.textContent='${icon}'"/>`:icon;
+    $('#v-kv').innerHTML=Object.entries(j.data.meta||{}).map(([k,v])=>`<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`).join('');
+    $('#verify').classList.add('show');
+    $('#f-category2').value=CATS.includes(j.data.category)?j.data.category:'meme';
+    $('#lookup-msg').textContent='Verified. Set your reserve + royalty, then send it to the loop.';
+  }catch(e){$('#lookup-btn').textContent='Fetch on-chain metadata →';$('#lookup-msg').textContent='Network error';}
+};
+
+$('#consign-btn').onclick=async()=>{
+  let body;
+  if(consignMode==='chain'){
+    if(!lookedUp){$('#consign-msg').textContent='Fetch an on-chain asset first (or switch to Manual).';return;}
+    body={...lookedUp,category:$('#f-category2').value,reserve:parseFloat($('#f-reserve').value),royalty:parseFloat($('#f-royalty').value)};
+  }else{
+    body={name:$('#f-name').value,type:$('#f-type').value,category:$('#f-category').value,collection:$('#f-collection').value,
+      image_url:$('#f-image').value,reserve:parseFloat($('#f-reserve').value),royalty:parseFloat($('#f-royalty').value),verified:false};
+    if(!body.name.trim()){$('#consign-msg').textContent='Give the asset a name first.';return;}
+  }
+  $('#consign-btn').textContent='Sending…';
+  const j=await fetch('api/consign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+  $('#consign-btn').textContent='Send to the Loop →';
+  if(j.ok){$('#consign-msg').textContent='Consigned — agents are matching now.';$('#f-name').value='';$('#l-ref').value='';lookedUp=null;$('#verify').classList.remove('show');poll();setTimeout(()=>$('#consign-msg').textContent='',3500);}
+  else $('#consign-msg').textContent=j.error||'Error';
+};
+
+$('#reg-btn').onclick=async()=>{
+  $('#reg-btn').textContent='Registering…';
+  const names=['NovaBidder','SatoshiSeeker','GhostBuyer','ApexCollector','ZenTrader'];
+  const nm=names[Math.floor(Math.random()*names.length)]+'-'+Math.floor(Math.random()*900+100);
+  const reg=await fetch('api/agents/register',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:nm,persona:'Autonomous external collector demoing the Asset Loop agent API.',budget:(2+Math.random()*4).toFixed(2),aggression:0.75,wants:CATS})}).then(r=>r.json());
+  $('#reg-btn').textContent='Spin up a demo API agent';
+  if(!reg.ok){$('#devkey').classList.add('show');$('#devkey').textContent=reg.error||'error';return;}
+  let bidMsg='No looping asset to bid on yet — consign one, then this agent will bid.';
+  const market=await fetch('api/market').then(r=>r.json());
+  if(market.assets&&market.assets.length){
+    const t=market.assets[0];
+    const bid=await fetch('api/bid',{method:'POST',headers:{'Content-Type':'application/json','x-agent-key':reg.api_key},
+      body:JSON.stringify({asset_id:t.asset_id,max_price:(t.current_ask*1.4).toFixed(3)})}).then(r=>r.json());
+    bidMsg=bid.ok?`Placed a standing bid of ${bid.standing_max} ₿ on ${bid.asset}. It now competes in the live auction (look for 🛰️).`:(bid.error||'bid failed');
+  }
+  $('#devkey').classList.add('show');
+  $('#devkey').innerHTML=`✓ Registered <b>${esc(reg.agent_id)}</b><br>api_key: ${esc(reg.api_key)}<br><br>${esc(bidMsg)}`;
+  poll();
+};
+
+const ORIGIN=location.origin+location.pathname.replace(/\/$/,'');
+$('#apidocs').textContent=
+`# A) Wallet-connected agent (self-custody, recommended)
+GET  ${ORIGIN}/api/auth/challenge?address=<addr>&chain=btc|evm
+     -> { message }
+POST ${ORIGIN}/api/auth/verify
+     { address, chain, signature, kind:"agent", budget, wants:[...] }
+     -> { session, agent_id, verified }
+POST ${ORIGIN}/api/bid    Header: x-session: <session>
+     { asset_id, max_price }
+
+# B) API-key agent (no wallet)
+POST ${ORIGIN}/api/agents/register  -> { agent_id, api_key }
+POST ${ORIGIN}/api/bid    Header: x-agent-key: ak_xxx   { asset_id, max_price }
+
+# Market + holdings
+GET  ${ORIGIN}/api/market
+GET  ${ORIGIN}/api/agents/{agent_id}
+# Settlement (non-custodial coordination)
+GET  ${ORIGIN}/api/settlement/quote?asset_id=...
+GET  ${ORIGIN}/api/settlements
+
+Bids stand for 15 min or until you win / are outbid.`;
+
+/* ═══════════════ SETTLEMENT STUDIO (signet) ═══════════════ */
+fetch('api/settlement/config').then(r=>r.json()).then(c=>{if(c&&c.ok)$('#studio-net').textContent=`${c.network}${c.mainnetBlocked?' · mainnet blocked':''}`;}).catch(()=>{});
+
+$('#st-selftest').onclick=async()=>{
+  const msg=$('#st-selftest-msg');
+  if(!SESSION){msg.textContent='Connect a Bitcoin wallet first.';openModal();return;}
+  if(activeChain!=='btc'){msg.textContent='Needs a Bitcoin wallet (UniSat/OKX/Leather).';return;}
+  $('#st-selftest').textContent='Building & verifying routing…';
+  try{
+    const r=await fetch('api/settlement/build-swap',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({self_test:true})}).then(x=>x.json());
+    if(!r.ok){msg.textContent=r.error||'build failed';$('#st-selftest').textContent='Build routing-verified swap & broadcast (signet)';return;}
+    msg.innerHTML=`✓ Routing verified — inscription → output[${r.routing.inscriptionOutput}] (buyer), fee ${r.fee} sats. Sign ${r.signing.buyerInputIndexes.length+1} inputs in your wallet…`;
+    const toSign=[...new Set([r.signing.sellerInputIndex,...r.signing.buyerInputIndexes])].sort((a,b)=>a-b).map(i=>({index:i}));
+    const signed=await signPsbtB64(r.psbt,toSign);
+    msg.textContent='Broadcasting to signet…';
+    const b=await fetch('api/settlement/broadcast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({signed_psbt:signed})}).then(x=>x.json());
+    if(b.ok)msg.innerHTML=`✓ Broadcast on ${esc(b.network)}! <a href="${esc(b.explorer)}" target="_blank">${esc(b.txid.slice(0,20))}… ↗</a> — verify the inscription output on-chain.`;
+    else msg.textContent=b.error||'broadcast failed';
+  }catch(e){msg.textContent=(e&&e.message)||'signing cancelled';}
+  $('#st-selftest').textContent='Build routing-verified swap & broadcast (signet)';
+};
+
+$('#st-load-utxos').onclick=async()=>{
+  const box=$('#st-utxo-list');
+  if(!SESSION){box.textContent='Connect a Bitcoin wallet first.';openModal();return;}
+  box.textContent='Loading your signet UTXOs…';
+  try{
+    const r=await fetch('api/settlement/utxos',{headers:authHeaders()}).then(x=>x.json());
+    if(!r.ok){box.textContent=r.error||'failed';return;}
+    if(!r.utxos.length){box.innerHTML='No confirmed signet UTXOs. Fund from <a href="https://signetfaucet.com" target="_blank">the faucet</a> and wait 1 block.';return;}
+    box.innerHTML='Click one to use it: '+r.utxos.map(u=>`<a href="#" data-ref="${esc(u.ref)}" class="utxopick">${esc(u.ref.slice(0,10))}…:${u.ref.split(':')[1]} (${u.value} sats)</a>`).join(' · ');
+    box.querySelectorAll('.utxopick').forEach(a=>a.onclick=(e)=>{e.preventDefault();$('#st-utxo').value=a.dataset.ref;box.querySelectorAll('.utxopick').forEach(x=>x.style.color='');a.style.color='var(--green)';});
+  }catch(e){box.textContent='network error';}
+};
+
+$('#st-offer-btn').onclick=async()=>{
+  const msg=$('#st-offer-msg');
+  if(!SESSION){msg.textContent='Connect your Bitcoin wallet first.';openModal();return;}
+  if(activeChain!=='btc'){msg.textContent='Settlement needs a Bitcoin wallet (UniSat/OKX/Leather).';return;}
+  const utxo=$('#st-utxo').value.trim(),price=parseFloat($('#st-price').value);
+  if(!/^[0-9a-f]{64}:\d+$/i.test(utxo)){msg.textContent='Enter inscription UTXO as txid:vout.';return;}
+  msg.textContent='Building offer from your inscription UTXO…';$('#st-offer-btn').textContent='Working…';
+  try{
+    const o=await fetch('api/settlement/offer',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({inscription_utxo:utxo,price_btc:price})}).then(r=>r.json());
+    if(!o.ok){msg.textContent=o.error||'offer build failed';$('#st-offer-btn').textContent='Build & sign offer →';return;}
+    msg.textContent='Approve the signature in your wallet (input 0, SINGLE|ANYONECANPAY)…';
+    const signed=await signPsbtB64(o.psbt,[{index:0,sighashTypes:[131]}]);
+    $('#st-offer-out').style.display='block';$('#st-offer-out').value=signed;
+    // Prefill buyer helper fields
+    $('#st-insval').value=o.inscription_value;$('#st-pricesats').value=o.price_sats;
+    msg.textContent=`✓ Signed offer ready (inscription ${o.inscription_value} sats, price ${o.price_sats} sats). Send the PSBT below to your buyer.`;
+  }catch(e){msg.textContent=(e&&e.message)||'signing cancelled';}
+  $('#st-offer-btn').textContent='Build & sign offer →';
+};
+
+$('#st-complete-btn').onclick=async()=>{
+  const msg=$('#st-buy-msg');
+  if(!SESSION){msg.textContent='Connect your Bitcoin wallet first.';openModal();return;}
+  if(activeChain!=='btc'){msg.textContent='Settlement needs a Bitcoin wallet (UniSat/OKX/Leather).';return;}
+  const offer=$('#st-in').value.trim(),insval=parseInt($('#st-insval').value),pricesats=parseInt($('#st-pricesats').value);
+  if(!offer){msg.textContent='Paste the seller offer PSBT.';return;}
+  $('#st-complete-btn').textContent='Working…';
+  try{
+    msg.textContent='Adding your payment inputs (fetching your signet UTXOs)…';
+    const c=await fetch('api/settlement/complete',{method:'POST',headers:{'Content-Type':'application/json',...authHeaders()},body:JSON.stringify({offer_psbt:offer,inscription_value:insval,price_sats:pricesats})}).then(r=>r.json());
+    if(!c.ok){msg.textContent=c.error||'completion failed';$('#st-complete-btn').textContent='Complete, sign & broadcast →';return;}
+    // Sign the buyer's inputs (indices 1..buyerInputs).
+    const idxs=[];for(let i=1;i<=c.buyerInputs;i++)idxs.push({index:i});
+    msg.textContent='Approve the payment signature in your wallet…';
+    const signed=await signPsbtB64(c.psbt,idxs);
+    msg.textContent='Broadcasting to signet…';
+    const b=await fetch('api/settlement/broadcast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({signed_psbt:signed})}).then(r=>r.json());
+    if(b.ok){msg.innerHTML=`✓ Broadcast! <a href="${esc(b.explorer)}" target="_blank">${esc(b.txid.slice(0,16))}… ↗</a>`;poll();}
+    else msg.textContent=b.error||'broadcast failed';
+  }catch(e){msg.textContent=(e&&e.message)||'signing cancelled';}
+  $('#st-complete-btn').textContent='Complete, sign & broadcast →';
+};
+
+document.querySelectorAll('#filter-tabs button').forEach(b=>{
+  b.onclick=()=>{document.querySelectorAll('#filter-tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');filterMode=b.dataset.f;renderLoops(STATE.assets||[]);};
+});
+
+refreshMe();
+poll();
+setInterval(poll,2500);
+</script>
+</body>
+</html>

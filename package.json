@@ -1,0 +1,37 @@
+{
+  "name": "asset-loop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Consignment loop marketplace — drop in a Counterparty/Ordinals asset and a pool of AI buyer-agents negotiates and flips it upward continuously.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@bitcoinerlab/secp256k1": "^1.2.0",
+    "bitcoinjs-lib": "^6.1.7",
+    "bitcoinjs-message": "^2.2.0",
+    "ethers": "^6.17.0",
+    "express": "^4.21.0"
+  },
+  "emblem_build": {
+    "tables": [
+      {
+        "name": "al_agents",
+        "schema": "CREATE TABLE IF NOT EXISTS al_agents (id TEXT PRIMARY KEY, name TEXT, persona TEXT, avatar TEXT, wants TEXT, budget REAL, aggression REAL, is_external INTEGER DEFAULT 0, api_key TEXT, endpoint TEXT, wallet_address TEXT, chain TEXT, kind TEXT DEFAULT 'bot', created_at TEXT DEFAULT (datetime('now')))"
+      },
+      {
+        "name": "al_settlements",
+        "schema": "CREATE TABLE IF NOT EXISTS al_settlements (id TEXT PRIMARY KEY, asset_id TEXT, asset_name TEXT, buyer_agent_id TEXT, buyer_name TEXT, buyer_wallet TEXT, seller_wallet TEXT, price REAL, chain TEXT, status TEXT, psbt_stub TEXT, created_at TEXT DEFAULT (datetime('now')))"
+      },
+      {
+        "name": "al_assets",
+        "schema": "CREATE TABLE IF NOT EXISTS al_assets (id TEXT PRIMARY KEY, name TEXT, type TEXT, collection TEXT, category TEXT, image_url TEXT, traits TEXT, reserve REAL, royalty REAL, status TEXT, holder_id TEXT, holder_name TEXT, price REAL, high_water REAL, mv REAL, earnings REAL, flips INTEGER DEFAULT 0, verified INTEGER DEFAULT 0, source_url TEXT, content_type TEXT, external_meta TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"
+      },
+      {
+        "name": "al_sales",
+        "schema": "CREATE TABLE IF NOT EXISTS al_sales (id TEXT PRIMARY KEY, asset_id TEXT, seller_name TEXT, buyer_id TEXT, buyer_name TEXT, price REAL, prev_price REAL, round INTEGER, log TEXT, ts TEXT DEFAULT (datetime('now')), FOREIGN KEY(asset_id) REFERENCES al_assets(id) ON DELETE CASCADE)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+.btctest/
+.signet-test/
+.emblem_build/
+*.log
+run.log
+*.psbt
+.env
+.DS_Store
+unsigned.psbt
+swapctx.json
+buyer.txt
+insc*.txt
