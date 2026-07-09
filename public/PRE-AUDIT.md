@@ -34,7 +34,18 @@ Mainnet stays hard-blocked regardless.
 ## Closed in a follow-up hardening pass (3rd round)
 - **[was HIGH] Indexer trust — HARDENED.** `verifyInputOnChain()` now, for every swap input: (a) fetches the **real value** from chain, (b) rejects **already-spent** outputs (`/outspend`), (c) requires a **confirmation-depth** minimum (`ASSET_LOOP_MIN_CONF`, default 1), and (d) on **mainnet cross-checks the value against a second independent indexer** (`ASSET_LOOP_INDEXER_2`, default blockstream.info) and fails closed on disagreement. Verified against live signet.
 
-## Remaining — for the independent/community audit (NOT fully fixed)
+## Closed in a follow-up hardening pass (4th round)
+- **[was MED] Consignment `verified`/`image_url` self-asserted — FIXED.** `verified`, `meta`, `source_url`, image are now **server-authoritative**: the client passes a lookup ref, the SERVER performs the on-chain lookup and uses its result; a client claiming `verified:true` with a fake image is rejected (verified=false, non-https URLs stripped). Verified live.
+- **[was LOW] `x-forwarded-for` rate-limit — FIXED.** `app.set('trust proxy', 1)`; rate-limit keys use the derived client IP, not a spoofable raw header.
+- **[was LOW] Taproot key-path finalize — IMPROVED + scoped.** `finalizeAndBroadcast` now pre-checks every input is signed and gives a clear error if a wallet omits required taproot/witness fields. Proven end-to-end with a **Bitcoin Core taproot signer** (PROOF-REGTEST). Third-party browser-wallet (Unisat/OKX/Xverse) taproot finalize is wired but should be confirmed per-wallet before mainnet — this genuinely needs testing against real wallets (author cannot verify headless).
+- **[was LOW] `npm audit` — REDUCED.** Removed the unused direct `bitcoinjs-message` dep. The remaining low-severity `elliptic` advisory is **transitive via `bip322-js`** (needed for taproot verification); `npm audit fix --force` would break taproot, so it's left for upstream/audit rather than force-broken.
+
+## Remaining — genuinely needs an independent expert (NOT author-fixable)
+1. **The independent audit itself.** The author fixed what the author can see; independence is the point.
+2. **Third-party taproot wallet finalize** — confirm Unisat/OKX/Xverse produce finalizable PSBTs (needs real wallets).
+3. **Transitive `elliptic` low-sev** — resolve upstream in `bip322-js` or via a vetted `overrides` pin.
+
+## Superseded / historical remaining items
 - **[MED] Consignment `verified` + `image_url` are self-asserted** (`/api/consign`) — set `verified` only from a server-side `/api/lookup`; https-only image/source URLs.
 - **[LOW] Taproot key-path finalize** — inputs are added `witnessUtxo`-only. The real-inscription regtest proof finalized fine because the ord wallet supplied the taproot signing fields; confirm behavior for arbitrary external taproot signers and populate `tapInternalKey`/sighash explicitly.
 - **[LOW] Rate-limit `x-forwarded-for`** on `/api/agents/register` is spoofable; behind the dashboard proxy set `trust proxy` and derive the real client IP.

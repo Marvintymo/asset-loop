@@ -211,14 +211,28 @@ function buildAtomicSwap({ sellerPayoutAddress, inscriptionUtxo, buyerAddress, b
   };
 }
 
-// Finalize a fully-signed PSBT and broadcast it.
+// Finalize a fully-signed PSBT and broadcast it. Verifies every input actually
+// carries a signature before finalizing (a wallet that silently skipped an input
+// — e.g. an unrecognized taproot input — would otherwise fail deep in the
+// finalizer with an opaque error). Taproot key-path inputs are finalized by
+// bitcoinjs's default finalizer once the wallet has added `tapKeySig`.
+// NOTE: proven end-to-end with a Bitcoin Core taproot signer (see PROOF-REGTEST);
+// third-party browser-wallet taproot finalize is wired but should be confirmed
+// against each wallet (Unisat/OKX/Xverse) before mainnet.
 async function finalizeAndBroadcast(signedPsbtB64) {
   const cfg = resolveNetwork();
   const psbt = bitcoin.Psbt.fromBase64(signedPsbtB64, { network: cfg.net });
-  psbt.finalizeAllInputs();
+  // Pre-flight: every input must be signed (partial-sig, or taproot key/script sig).
+  const unsigned = [];
+  psbt.data.inputs.forEach((inp, i) => {
+    const signed = (inp.partialSig && inp.partialSig.length) || inp.tapKeySig || (inp.tapScriptSig && inp.tapScriptSig.length) || inp.finalScriptWitness || inp.finalScriptSig;
+    if (!signed) unsigned.push(i);
+  });
+  if (unsigned.length) throw new Error(`inputs not signed: [${unsigned.join(',')}] — every party must sign before broadcast`);
+  try { psbt.finalizeAllInputs(); }
+  catch (e) { throw new Error(`finalize failed (${e.message}) — a wallet may not have supplied the required taproot/witness fields`); }
   const tx = psbt.extractTransaction();
-  const hex = tx.toHex();
-  const txid = await broadcast(hex, cfg.apiBase);
+  const txid = await broadcast(tx.toHex(), cfg.apiBase);
   return { txid, network: cfg.name, explorer: `${cfg.apiBase.replace('/api', '')}/tx/${txid}` };
 }
 

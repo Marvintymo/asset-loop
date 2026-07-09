@@ -23,8 +23,6 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
-let btcMessage = null;
-try { btcMessage = require('bitcoinjs-message'); } catch (e) { console.error('bitcoinjs-message unavailable:', e.message); }
 let bip322 = null;
 try { bip322 = require('bip322-js'); } catch (e) { console.error('bip322-js unavailable:', e.message); }
 let SETTLE = null;
@@ -32,6 +30,9 @@ try { SETTLE = require('./settlement'); } catch (e) { console.error('settlement 
 const btcToSats = (btc) => Math.max(0, Math.round(Number(btc) * 1e8));
 
 const app = express();
+// Behind the dashboard proxy (1 hop): derive the real client IP from the proxy's
+// X-Forwarded-For rather than trusting a client-supplied header blindly.
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '256kb' }));
 
 const PORT = process.env.PORT || 3000;
@@ -474,24 +475,33 @@ app.post('/api/lookup', async (req, res) => {
 app.post('/api/consign', async (req, res) => {
   const b = req.body || {};
   const owner = sessionFromReq(req); // optional: binds asset to a connected wallet
-  const name = String(b.name || '').trim().slice(0, 90);
+  // Server-AUTHORITATIVE verification: `verified`/`meta`/`source_url`/image can NOT
+  // be self-asserted by the client. If a lookup ref is supplied, the SERVER does
+  // the on-chain lookup and uses ITS result; otherwise the asset is unverified.
+  let ver = null;
+  if (b.lookup && b.lookup.ref) {
+    try { ver = b.lookup.type === 'counterparty' ? await lookupCounterparty(b.lookup.ref) : await lookupOrdinals(b.lookup.ref); }
+    catch (e) { return res.status(400).json({ error: `on-chain verification failed: ${e.message}` }); }
+  }
+  const httpsOnly = (u) => { const s = String(u || '').trim().slice(0, 500); return /^https:\/\//i.test(s) ? s : ''; };
+  const name = String((ver ? ver.name : b.name) || '').trim().slice(0, 90);
   if (!name) return res.status(400).json({ error: 'name required' });
-  const type = ['counterparty', 'ordinals'].includes(b.type) ? b.type : 'ordinals';
-  const category = CATEGORIES.includes(b.category) ? b.category : 'meme';
+  const type = ver ? ver.type : (['counterparty', 'ordinals'].includes(b.type) ? b.type : 'ordinals');
+  const category = CATEGORIES.includes(b.category) ? b.category : (ver && CATEGORIES.includes(ver.category) ? ver.category : 'meme');
   let reserve = parseFloat(b.reserve); if (!Number.isFinite(reserve) || reserve <= 0) reserve = 0.05; reserve = Math.min(reserve, 50);
   let royalty = parseFloat(b.royalty); if (!Number.isFinite(royalty) || royalty < 0) royalty = 5; royalty = Math.min(royalty, 20) / 100;
   const asset = {
     id: id('ast'), name, type,
-    collection: String(b.collection || '').trim().slice(0, 60) || (type === 'ordinals' ? 'Ordinals' : 'Counterparty'),
-    category, image_url: String(b.image_url || '').trim().slice(0, 500),
-    traits: Array.isArray(b.traits) ? b.traits.slice(0, 8).map((t) => String(t).slice(0, 40)) : [],
+    collection: (ver ? ver.collection : String(b.collection || '').trim().slice(0, 60)) || (type === 'ordinals' ? 'Ordinals' : 'Counterparty'),
+    category, image_url: ver ? httpsOnly(ver.image_url) : httpsOnly(b.image_url),
+    traits: ver && Array.isArray(ver.traits) ? ver.traits.slice(0, 8) : (Array.isArray(b.traits) ? b.traits.slice(0, 8).map((t) => String(t).slice(0, 40)) : []),
     reserve: round2(reserve), royalty, status: 'looping', owner_id: owner ? owner.agentId : null,
     holder_id: 'consignor', holder_name: 'You (consignor)', holder_avatar: '📦',
     price: 0, high_water: 0, mv: round2(reserve * rnd(1.0, 1.25)), earnings: 0, flips: 0,
-    verified: !!b.verified, source_url: b.source_url ? String(b.source_url).slice(0, 300) : null,
-    content_type: b.content_type ? String(b.content_type).slice(0, 80) : null,
-    meta: b.meta && typeof b.meta === 'object' ? b.meta : null,
-    ladder: [], lastNote: b.verified ? 'On-chain asset consigned. Entering the loop…' : 'Consigned. Entering the loop…',
+    verified: !!ver, source_url: ver ? httpsOnly(ver.source_url) : null,
+    content_type: ver ? String(ver.content_type || '').slice(0, 80) : null,
+    meta: ver ? ver.meta : null,
+    ladder: [], lastNote: ver ? 'On-chain asset verified & consigned. Entering the loop…' : 'Consigned. Entering the loop…',
     created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
   state.assets.unshift(asset);
@@ -816,7 +826,7 @@ app.post('/api/settlement/broadcast', async (req, res) => {
 
 // Register an external agent → returns agent_id + api_key.
 app.post('/api/agents/register', async (req, res) => {
-  const ip = req.headers['x-forwarded-for'] || req.ip || 'anon';
+  const ip = req.ip || 'anon'; // real client IP via trust-proxy (not a spoofable raw XFF)
   if (!rateLimit(`reg:${ip}`, 20, 60000)) return res.status(429).json({ error: 'rate limited' });
   const b = req.body || {};
   const name = String(b.name || '').trim().slice(0, 40);

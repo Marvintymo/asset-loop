@@ -619,7 +619,8 @@ $('#consign-btn').onclick=async()=>{
   let body;
   if(consignMode==='chain'){
     if(!lookedUp){$('#consign-msg').textContent='Fetch an on-chain asset first (or switch to Manual).';return;}
-    body={...lookedUp,category:$('#f-category2').value,reserve:parseFloat($('#f-reserve').value),royalty:parseFloat($('#f-royalty').value)};
+    // Pass the lookup ref so the SERVER re-verifies on-chain (verified/meta/image are server-authoritative).
+    body={category:$('#f-category2').value,reserve:parseFloat($('#f-reserve').value),royalty:parseFloat($('#f-royalty').value),lookup:{type:$('#l-type').value,ref:$('#l-ref').value.trim()}};
   }else{
     body={name:$('#f-name').value,type:$('#f-type').value,category:$('#f-category').value,collection:$('#f-collection').value,
       image_url:$('#f-image').value,reserve:parseFloat($('#f-reserve').value),royalty:parseFloat($('#f-royalty').value),verified:false};
