@@ -127,7 +127,7 @@ function valuationFor(agent, asset) {
 }
 
 // Standing external bids that are still fresh, as auction participants.
-function externalBidders(asset, ask) {
+function externalBidders(asset, ask, realOnly) {
   const m = extBids.get(asset.id);
   if (!m) return [];
   const now = Date.now();
@@ -137,6 +137,9 @@ function externalBidders(asset, ask) {
     if (agentId === asset.holder_id) continue;
     const agent = state.agents.find((a) => a.id === agentId);
     if (!agent) { m.delete(agentId); continue; }
+    // Fair-play: once an asset is a real-money market, only wallet-backed (real-
+    // funds) bidders may compete — API agents without a wallet are excluded too.
+    if (realOnly && !agent.wallet_address) continue;
     if (bid.max_price > ask) out.push({ agent, val: round2(bid.max_price), external: true });
   }
   return out;
@@ -148,11 +151,14 @@ function tickAsset(asset) {
   const ask = asset.price > 0 ? asset.price : asset.reserve;
   const increment = Math.max(0.01, round2(ask * rnd(0.03, 0.08)));
 
-  const internal = state.agents
+  // FAIR-PLAY: once a real-funds bid has landed on this asset, the house bots
+  // (play money) are locked out — only real-funds (wallet-backed) bidders compete.
+  const realMarket = !!asset.real_market;
+  const internal = realMarket ? [] : state.agents
     .filter((a) => !a.is_external && a.id !== asset.holder_id)
     .map((a) => ({ agent: a, val: valuationFor(a, asset), external: false }))
     .filter((b) => b.val > ask + increment * 0.5);
-  const external = externalBidders(asset, ask + increment * 0.5);
+  const external = externalBidders(asset, ask + increment * 0.5, realMarket);
   const bids = internal.concat(external).sort((x, y) => y.val - x.val);
 
   if (bids.length === 0) {
@@ -352,8 +358,8 @@ async function lookupCounterparty(ref) {
 
 // ─────────────────────────── Persistence ────────────────────────────────────
 async function persistAsset(a) {
-  await dbExec(`INSERT OR REPLACE INTO al_assets (id,name,type,collection,category,image_url,traits,reserve,royalty,status,holder_id,holder_name,price,high_water,mv,earnings,flips,verified,source_url,content_type,external_meta,owner_id,created_at,updated_at)
-    VALUES (${sqlVal(a.id)},${sqlVal(a.name)},${sqlVal(a.type)},${sqlVal(a.collection)},${sqlVal(a.category)},${sqlVal(a.image_url)},${sqlVal(JSON.stringify(a.traits || []))},${sqlVal(a.reserve)},${sqlVal(a.royalty)},${sqlVal(a.status)},${sqlVal(a.holder_id)},${sqlVal(a.holder_name)},${sqlVal(a.price)},${sqlVal(a.high_water)},${sqlVal(a.mv)},${sqlVal(a.earnings)},${sqlVal(a.flips)},${sqlVal(a.verified ? 1 : 0)},${sqlVal(a.source_url || null)},${sqlVal(a.content_type || null)},${sqlVal(JSON.stringify(a.meta || null))},${sqlVal(a.owner_id || null)},${sqlVal(a.created_at)},${sqlVal(a.updated_at)})`);
+  await dbExec(`INSERT OR REPLACE INTO al_assets (id,name,type,collection,category,image_url,traits,reserve,royalty,status,holder_id,holder_name,price,high_water,mv,earnings,flips,verified,source_url,content_type,external_meta,owner_id,real_market,created_at,updated_at)
+    VALUES (${sqlVal(a.id)},${sqlVal(a.name)},${sqlVal(a.type)},${sqlVal(a.collection)},${sqlVal(a.category)},${sqlVal(a.image_url)},${sqlVal(JSON.stringify(a.traits || []))},${sqlVal(a.reserve)},${sqlVal(a.royalty)},${sqlVal(a.status)},${sqlVal(a.holder_id)},${sqlVal(a.holder_name)},${sqlVal(a.price)},${sqlVal(a.high_water)},${sqlVal(a.mv)},${sqlVal(a.earnings)},${sqlVal(a.flips)},${sqlVal(a.verified ? 1 : 0)},${sqlVal(a.source_url || null)},${sqlVal(a.content_type || null)},${sqlVal(JSON.stringify(a.meta || null))},${sqlVal(a.owner_id || null)},${sqlVal(a.real_market ? 1 : 0)},${sqlVal(a.created_at)},${sqlVal(a.updated_at)})`);
 }
 async function persistSale(s) {
   await dbExec(`INSERT OR REPLACE INTO al_sales (id,asset_id,seller_name,buyer_id,buyer_name,price,prev_price,round,log,ts)
@@ -382,7 +388,7 @@ async function boot() {
     image_url: r.image_url, traits: safeJson(r.traits, []), reserve: r.reserve, royalty: r.royalty || 0.05,
     status: r.status, holder_id: r.holder_id, holder_name: r.holder_name, holder_avatar: '',
     price: r.price, high_water: r.high_water, mv: r.mv || r.reserve, earnings: r.earnings || 0, flips: r.flips || 0,
-    verified: !!r.verified, source_url: r.source_url, content_type: r.content_type, meta: safeJson(r.external_meta, null), owner_id: r.owner_id || null,
+    verified: !!r.verified, source_url: r.source_url, content_type: r.content_type, meta: safeJson(r.external_meta, null), owner_id: r.owner_id || null, real_market: !!r.real_market,
     created_at: r.created_at, updated_at: r.updated_at, ladder: [], lastNote: '',
   }));
   const saleRows = await dbQuery('SELECT * FROM al_sales ORDER BY ts DESC LIMIT 200');
@@ -445,7 +451,7 @@ app.get('/api/state', (req, res) => {
       traits: a.traits, reserve: a.reserve, royalty: a.royalty, status: a.status, holder_name: a.holder_name,
       holder_avatar: a.holder_avatar, price: a.price, high_water: a.high_water, earnings: a.earnings, flips: a.flips,
       ladder: a.ladder, lastNote: a.lastNote, mv: round2(a.mv), verified: a.verified, source_url: a.source_url,
-      content_type: a.content_type, meta: a.meta,
+      content_type: a.content_type, meta: a.meta, real_market: !!a.real_market,
     })),
     sales: state.sales.slice(0, 40),
     stats: {
@@ -598,6 +604,13 @@ function placeBid(agent, asset, maxPrice) {
   maxPrice = Math.min(maxPrice, agent.budget);
   if (!extBids.has(asset.id)) extBids.set(asset.id, new Map());
   extBids.get(asset.id).set(agent.id, { max_price: round2(maxPrice), ts: Date.now() });
+  // A real-funds (wallet-backed) bid flips the asset to a real-money market:
+  // from here on the house bots are locked out (fair to the actual buyer).
+  if (agent.wallet_address && !asset.real_market) {
+    asset.real_market = true; asset.updated_at = new Date().toISOString();
+    asset.lastNote = 'Real-money market — house bots have stepped back.';
+    persistAsset(asset);
+  }
   return round2(maxPrice);
 }
 

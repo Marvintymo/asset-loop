@@ -158,7 +158,7 @@
     <div class="logo">🔁</div>
     <div>
       <h1>Asset Loop</h1>
-      <div class="sub">Consign a real Counterparty / Ordinals asset — wallet-connected AI agents & collectors negotiate and flip it upward.</div>
+      <div class="sub">Consign a real Counterparty / Ordinals asset — wallet-connected AI agents & collectors negotiate and flip it upward. · <a href="about.html" style="color:var(--accent2)">New here? What is this? →</a></div>
     </div>
     <div class="spacer"></div>
     <span class="pill" id="llmpill" title="AI agents reason with a real LLM when an OPENROUTER_API_KEY is set for this group (via the dashboard). Until then, built-in reasoning is used.">LLM: —</span>
@@ -223,7 +223,10 @@
 
       <div class="card" style="margin-bottom:16px;">
         <div class="hd"><span>🤖</span><h2>Buyer-agents & collectors</h2><span class="spacer"></span><span class="chip w" id="wallet-count">0 wallets</span></div>
-        <div class="bd" id="agents"></div>
+        <div class="bd">
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.55;padding-bottom:9px;margin-bottom:7px;border-bottom:1px solid var(--border)">🎭 <b style="color:var(--accent2)">House bots</b> place <b>real bids with play money</b> — for price action &amp; liveliness. 👛 <b style="color:var(--purple)">Connected wallets</b> bid with <b>real funds</b> and are the only ones that settle for real. <b>Once a real-funds bid lands, the house steps back</b> — no play money against a real buyer. <a href="about.html" style="color:var(--accent2)">More →</a></div>
+          <div id="agents"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -263,7 +266,7 @@
       <div class="card" style="margin-bottom:16px;">
         <div class="hd"><span>⚖️</span><h2>Settlement studio · signet (Phase 2)</h2><span class="spacer"></span><span class="chip" id="studio-net">—</span></div>
         <div class="bd">
-          <div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Real atomic swap on Bitcoin <b>signet</b> (test coins). Seller signs an offer; buyer completes + pays in one transaction. Mainnet is blocked until audited. Needs a Bitcoin wallet (UniSat/OKX/Leather) with funded signet UTXOs — <a href="https://signetfaucet.com" target="_blank">faucet ↗</a>. · <a href="SECURITY-AUDIT.md" target="_blank">📋 audit package ↗</a> · <a href="RUNBOOK-SIGNET.md" target="_blank">🧪 signet dry-run runbook ↗</a> · <a href="AUDIT-HANDOFF.md" target="_blank">🤝 auditor handoff ↗</a> · <a href="PROOF-REGTEST.md" target="_blank">✅ regtest proof ↗</a> · <a href="PRE-AUDIT.md" target="_blank">🛡️ pre-audit ↗</a> · <a href="COMMUNITY-REVIEW.md" target="_blank">👥 community review ↗</a></div>
+          <div style="font-size:12px;color:var(--muted2);margin-bottom:10px">Real atomic swap on Bitcoin <b>signet</b> (test coins). Seller signs an offer; buyer completes + pays in one transaction. Mainnet is blocked until audited. Needs a Bitcoin wallet (UniSat/OKX/Leather) with funded signet UTXOs — <a href="https://signetfaucet.com" target="_blank">faucet ↗</a>. · <a href="SECURITY-AUDIT.md" target="_blank">📋 audit package ↗</a> · <a href="RUNBOOK-SIGNET.md" target="_blank">🧪 signet dry-run runbook ↗</a> · <a href="AUDIT-HANDOFF.md" target="_blank">🤝 auditor handoff ↗</a> · <a href="PROOF-REGTEST.md" target="_blank">✅ regtest proof ↗</a> · <a href="PRE-AUDIT.md" target="_blank">🛡️ pre-audit ↗</a> · <a href="COMMUNITY-REVIEW.md" target="_blank">👥 community review ↗</a> · <a href="MAINNET-READINESS.md" target="_blank">🚦 mainnet checklist ↗</a></div>
           <details style="margin-bottom:8px">
             <summary>🧭 Guided signet test-flip (do this before mainnet)</summary>
             <div style="margin-top:8px;font-size:12px;color:var(--muted2);line-height:1.7">
@@ -483,15 +486,20 @@ function renderStl(st){const p=$('#stlpill');p.className='pill';p.textContent=`s
   $('#settle-banner').innerHTML=`🔐 <b>Non-custodial by design.</b> Wallets stay self-custody; the platform coordinates signed transfers but never holds keys. Settlement mode: <b>${st?st.mode:'—'}</b> on <b>${st?st.network:'—'}</b> — no mainnet funds move in this mode.`;}
 function renderAgents(agents){
   const order=agents.slice().sort((a,b)=>(b.wallet?1:0)-(a.wallet?1:0));
+  // Tier: real funds (wallet-connected) vs external agent (bids only, no wallet) vs house bot (play money).
+  const tier=(a)=> a.wallet
+    ? '<span class="chip w">👛 real funds</span>'
+    : (a.is_external ? '<span class="chip ext">🛰️ agent · bids only</span>'
+                     : '<span class="chip" style="color:var(--accent2);border-color:rgba(255,180,84,.35)">🎭 house · play money</span>');
   $('#agents').innerHTML=order.map(a=>`
     <div class="agent">
       <div class="av">${a.avatar||'🤖'}</div>
       <div style="min-width:0">
-        <div class="nm">${esc(a.name)} ${a.kind==='user'?'<span class="chip w">collector</span>':a.is_external?'<span class="chip ext">agent</span>':''}</div>
+        <div class="nm">${esc(a.name)} ${tier(a)}</div>
         <div class="pz">${esc(a.persona)}</div>
         <div class="meta">
-          <span class="chip b">budget ${fmt(a.budget)} ₿</span>
-          ${a.wallet?`<span class="chip w">👛 ${esc(a.wallet)}</span>`:`<span class="chip">aggr ${(a.aggression*100|0)}%</span>`}
+          <span class="chip b">${a.wallet?'budget':'sim budget'} ${fmt(a.budget)} ₿</span>
+          ${a.wallet?`<span class="chip w">${esc(a.wallet)}</span>`:`<span class="chip">aggr ${(a.aggression*100|0)}%</span>`}
           ${a.holdings.length?`<span class="chip hold">holds ${a.holdings.length}</span>`:''}
         </div>
       </div>
@@ -523,6 +531,7 @@ function renderLoops(assets){
       <div class="abar">
         <span class="hold">Holder: <b>${a.holder_avatar||''} ${esc(a.holder_name)}</b></span>
         <span class="status s-${a.status}">${a.status==='looping'?'<span class="dot"></span>':''}${a.status}</span>
+        ${a.real_market?'<span class="status" style="background:rgba(167,139,250,.16);color:var(--purple)" title="A real-funds bid has been placed — house bots are locked out of this auction.">🔒 real-money market</span>':''}
         <div class="mini">
           ${a.status==='looping'?`<button class="bid" onclick="bid('${a.id}','${esc(a.name).replace(/'/g,'')}',${a.flips>0?a.price:a.reserve})">${SESSION?'Bid':'Connect to bid'}</button>`:''}
           ${a.status==='looping'?`<button onclick="act('${a.id}','pause')">Pause</button>`:''}

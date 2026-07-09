@@ -26,7 +26,7 @@
       },
       {
         "name": "al_assets",
-        "schema": "CREATE TABLE IF NOT EXISTS al_assets (id TEXT PRIMARY KEY, name TEXT, type TEXT, collection TEXT, category TEXT, image_url TEXT, traits TEXT, reserve REAL, royalty REAL, status TEXT, holder_id TEXT, holder_name TEXT, price REAL, high_water REAL, mv REAL, earnings REAL, flips INTEGER DEFAULT 0, verified INTEGER DEFAULT 0, source_url TEXT, content_type TEXT, external_meta TEXT, owner_id TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"
+        "schema": "CREATE TABLE IF NOT EXISTS al_assets (id TEXT PRIMARY KEY, name TEXT, type TEXT, collection TEXT, category TEXT, image_url TEXT, traits TEXT, reserve REAL, royalty REAL, status TEXT, holder_id TEXT, holder_name TEXT, price REAL, high_water REAL, mv REAL, earnings REAL, flips INTEGER DEFAULT 0, verified INTEGER DEFAULT 0, source_url TEXT, content_type TEXT, external_meta TEXT, owner_id TEXT, real_market INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))"
       },
       {
         "name": "al_sales",
