@@ -396,7 +396,13 @@ async function connectWallet(prov){
     am.textContent='Approve the signature in your wallet…';
     const signature=await signMsg(prov,address,ch.message);
     am.textContent='Verifying…';
-    const body={address,chain:prov.chain,signature,kind:connectKind};
+    // Capture the wallet pubkey (for taproot tapInternalKey during settlement).
+    let pubkey=null;
+    if(prov.chain==='btc'){try{
+      if(prov.key==='unisat') pubkey=await window.unisat.getPublicKey();
+      else if(prov.key==='okx') pubkey=(await window.okxwallet.bitcoin.connect()).publicKey;
+    }catch(e){}}
+    const body={address,chain:prov.chain,signature,kind:connectKind,pubkey};
     if(connectKind==='agent'){body.budget=parseFloat(prompt('Agent bidding budget in BTC?','3'))||3;body.persona='Wallet-connected autonomous agent.';}
     const v=await fetch('api/auth/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
     if(!v.ok){am.textContent=v.error||'verify failed';return;}

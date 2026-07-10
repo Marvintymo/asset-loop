@@ -42,7 +42,7 @@ Mainnet stays hard-blocked regardless.
 
 ## Remaining — genuinely needs an independent expert (NOT author-fixable)
 1. **The independent audit itself.** The author fixed what the author can see; independence is the point.
-2. **Third-party taproot wallet finalize** — confirm Unisat/OKX/Xverse produce finalizable PSBTs (needs real wallets).
+2. **Third-party taproot wallet finalize** — confirm Unisat/OKX/Xverse produce finalizable PSBTs (needs real wallets). *Update:* per expert feedback, `buildAtomicSwap` now sets an explicit `sighashType: SIGHASH_ALL` on every input and includes `tapInternalKey` (x-only, from the wallet's captured pubkey) on taproot inputs — the two things browser wallets need to sign reliably. Construction verified; the actual sign+finalize with each real wallet still needs a signet test.
 3. **Transitive `elliptic` low-sev** — resolve upstream in `bip322-js` or via a vetted `overrides` pin.
 
 ## Superseded / historical remaining items

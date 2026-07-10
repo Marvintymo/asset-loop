@@ -661,7 +661,8 @@ app.post('/api/auth/verify', async (req, res) => {
   await persistAgent(agent);
 
   const token = 'sess_' + crypto.randomBytes(24).toString('hex');
-  sessions.set(token, { address, chain, agentId: agent.id, kind, verified: v.verified, exp: Date.now() + SESSION_TTL });
+  const pubkey = /^[0-9a-f]{66}$/i.test(String(b.pubkey || '')) ? String(b.pubkey) : null; // 33-byte hex (for taproot tapInternalKey)
+  sessions.set(token, { address, chain, agentId: agent.id, kind, verified: v.verified, pubkey, exp: Date.now() + SESSION_TTL });
   res.json({
     ok: true, session: token, agent_id: agent.id, kind, verified: v.verified, verify_method: v.method,
     address, chain, budget: agent.budget,
@@ -747,7 +748,8 @@ const MIN_CONF = Number.isFinite(parseInt(process.env.ASSET_LOOP_MIN_CONF, 10)) 
 async function verifiedInput(u) {
   if (!u || !UTXO_RE.test(String(u.txid)) || !Number.isInteger(u.vout) || u.vout < 0) throw new Error('bad utxo {txid,vout}');
   const value = await SETTLE.verifyInputOnChain(u.txid, u.vout, { minConf: MIN_CONF });
-  return { txid: u.txid, vout: u.vout, value, address: u.address };
+  const pubkey = /^[0-9a-f]{66}$/i.test(String(u.pubkey || '')) ? String(u.pubkey) : undefined;
+  return { txid: u.txid, vout: u.vout, value, address: u.address, pubkey };
 }
 
 // The legacy pre-signed "listing" offer/complete paths are DISABLED — the bare
@@ -777,9 +779,9 @@ app.post('/api/settlement/build-swap', async (req, res) => {
       const priceSats = Math.max(1000, Math.floor(payment.reduce((a, u) => a + u.value, 0) * 0.3));
       const swap = SETTLE.buildAtomicSwap({
         sellerPayoutAddress: s.address, buyerAddress: s.address,
-        inscriptionUtxo: { txid: inscription.txid, vout: inscription.vout, value: inscription.value, address: s.address },
-        buyerDummyUtxo: { txid: dummy.txid, vout: dummy.vout, value: dummy.value },
-        buyerPaymentUtxos: payment.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value })),
+        inscriptionUtxo: { txid: inscription.txid, vout: inscription.vout, value: inscription.value, address: s.address, pubkey: s.pubkey },
+        buyerDummyUtxo: { txid: dummy.txid, vout: dummy.vout, value: dummy.value, pubkey: s.pubkey },
+        buyerPaymentUtxos: payment.map((u) => ({ txid: u.txid, vout: u.vout, value: u.value, pubkey: s.pubkey })),
         priceSats, feeRate,
       });
       return res.json({ ok: true, network: cfg.name, self_test: true, price_sats: priceSats, ...swap,

@@ -204,7 +204,21 @@ function buildAtomicSwap({ sellerPayoutAddress, inscriptionUtxo, buyerAddress, b
   assertOrdinalRouting({ inputValues, outputValues, insInputIdx: 1, insOffset: inscriptionOffset, buyerOutputIdx: 0 });
 
   const psbt = new bitcoin.Psbt({ network: net });
-  for (const i of inputsMeta) psbt.addInput({ hash: i.txid, index: i.vout, witnessUtxo: { script: i.script, value: i.value } });
+  const SIGHASH_ALL = bitcoin.Transaction.SIGHASH_ALL;
+  for (const i of inputsMeta) {
+    // Explicit sighashType (SIGHASH_ALL): browser wallets (Unisat/OKX/Xverse) can
+    // fail or default to SIGHASH_DEFAULT if left to guess. Setting it is mandatory
+    // for reliable external signing (per expert review of the taproot path).
+    const inp = { hash: i.txid, index: i.vout, witnessUtxo: { script: i.script, value: i.value }, sighashType: SIGHASH_ALL };
+    // Taproot key-path input (OP_1 <32-byte>): include tapInternalKey (x-only) when
+    // the owner's pubkey is known, so external wallets recognise + sign the input.
+    const isTaproot = i.script.length === 34 && i.script[0] === 0x51 && i.script[1] === 0x20;
+    if (isTaproot && i.pubkey) {
+      const pk = Buffer.isBuffer(i.pubkey) ? i.pubkey : Buffer.from(String(i.pubkey), 'hex');
+      if (pk.length === 33 || pk.length === 32) inp.tapInternalKey = pk.length === 33 ? pk.subarray(1) : pk;
+    }
+    psbt.addInput(inp);
+  }
   psbt.addOutput({ address: buyerAddress, value: ordinalOut });      // [0] inscription → buyer
   psbt.addOutput({ address: sellerPayoutAddress, value: priceSats }); // [1] payment → seller
   if (change > 330) psbt.addOutput({ address: buyerAddress, value: change }); // [2] change → buyer
