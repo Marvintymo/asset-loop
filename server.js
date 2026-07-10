@@ -451,7 +451,7 @@ app.get('/api/state', (req, res) => {
       traits: a.traits, reserve: a.reserve, royalty: a.royalty, status: a.status, holder_name: a.holder_name,
       holder_avatar: a.holder_avatar, price: a.price, high_water: a.high_water, earnings: a.earnings, flips: a.flips,
       ladder: a.ladder, lastNote: a.lastNote, mv: round2(a.mv), verified: a.verified, source_url: a.source_url,
-      content_type: a.content_type, meta: a.meta, real_market: !!a.real_market,
+      content_type: a.content_type, meta: a.meta, real_market: !!a.real_market, owner_id: a.owner_id || null,
     })),
     sales: state.sales.slice(0, 40),
     stats: {
@@ -521,11 +521,16 @@ app.post('/api/asset/:id/:action', async (req, res) => {
   const asset = state.assets.find((a) => a.id === req.params.id);
   if (!asset) return res.status(404).json({ error: 'not found' });
   const action = req.params.action;
-  // Ownership: if the asset was consigned by a connected wallet, only that owner
-  // may pause/resume/withdraw it. Anonymous demo assets stay open (rate-limited).
-  if (['pause', 'resume', 'withdraw'].includes(action) && asset.owner_id) {
+  // Ownership: only the consignor may pause/resume/withdraw/step their listing.
+  // (Anonymous demo assets with no owner stay open — they carry no real funds.)
+  if (['pause', 'resume', 'withdraw', 'step'].includes(action) && asset.owner_id) {
     const sess = sessionFromReq(req);
-    if (!sess || sess.agentId !== asset.owner_id) return res.status(403).json({ error: 'only the consignor may control this asset' });
+    if (!sess || sess.agentId !== asset.owner_id) return res.status(403).json({ error: 'only the consignor may control this listing' });
+  }
+  // Fairness: once a real-funds bid has landed, the consignor cannot withdraw the
+  // asset out from under a genuine buyer.
+  if (action === 'withdraw' && asset.real_market) {
+    return res.status(409).json({ error: 'cannot withdraw after a real-funds bid — that would be unfair to the buyer' });
   }
   if (action === 'pause') asset.status = 'paused';
   else if (action === 'resume') asset.status = 'looping';

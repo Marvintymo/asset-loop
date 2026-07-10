@@ -527,6 +527,7 @@ function renderLoops(assets){
     const up=a.flips>0?`▲ ${((a.price/(a.reserve||a.price))*100-100).toFixed(0)}% over reserve`:'reserve '+fmt(a.reserve)+' ₿';
     const icon=a.type==='counterparty'?'🎴':'🟧';
     const ask=fmt(a.flips>0?a.price:a.reserve);
+    const isOwner=!!(ME&&ME.agent_id&&a.owner_id&&ME.agent_id===a.owner_id); // consignor-only controls
     return `
     <div class="asset">
       <div class="ahd">
@@ -547,10 +548,11 @@ function renderLoops(assets){
         ${a.real_market?'<span class="status" style="background:rgba(167,139,250,.16);color:var(--purple)" title="A real-funds bid has been placed — house bots are locked out of this auction.">🔒 real-money market</span>':''}
         <div class="mini">
           ${a.status==='looping'?`<button class="bid" onclick="bid('${a.id}','${esc(a.name).replace(/'/g,'')}',${a.flips>0?a.price:a.reserve})">${SESSION?'Bid':'Connect to bid'}</button>`:''}
-          ${a.status==='looping'?`<button onclick="act('${a.id}','pause')">Pause</button>`:''}
-          ${a.status==='paused'?`<button onclick="act('${a.id}','resume')">Resume</button>`:''}
-          ${a.status!=='withdrawn'?`<button onclick="act('${a.id}','step')">Step ▸</button>`:''}
-          ${a.status!=='withdrawn'?`<button onclick="act('${a.id}','withdraw')">Withdraw</button>`:''}
+          ${isOwner&&a.status==='looping'?`<button onclick="act('${a.id}','pause')">Pause</button>`:''}
+          ${isOwner&&a.status==='paused'?`<button onclick="act('${a.id}','resume')">Resume</button>`:''}
+          ${isOwner&&a.status!=='withdrawn'?`<button onclick="act('${a.id}','step')">Step ▸</button>`:''}
+          ${isOwner&&a.status!=='withdrawn'&&!a.real_market?`<button onclick="act('${a.id}','withdraw')">Withdraw</button>`:''}
+          ${isOwner&&a.real_market&&a.status!=='withdrawn'?`<span class="chip" style="color:var(--muted)" title="A real-funds bid was placed — withdrawing is locked so a genuine buyer isn't left hanging.">🔒 committed (can't withdraw)</span>`:''}
         </div>
       </div>
       <div class="abody">
