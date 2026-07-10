@@ -17,7 +17,7 @@ gh repo create asset-loop --public --source=. --push
 git remote add origin https://github.com/<you>/asset-loop.git
 git branch -M main && git push -u origin main
 ```
-Then replace `<REPO_URL>` below with your new repo link.
+Then replace `https://github.com/Marvintymo/asset-loop` below with your new repo link.
 
 ---
 
@@ -32,7 +32,7 @@ Then replace `<REPO_URL>` below with your new repo link.
 > `[inscription→buyer (dummy+inscription value), payment→seller, change]`. A
 > sat-flow verifier asserts the inscribed sat lands in the buyer output before
 > signing. It's proven end-to-end on regtest with a real `ord` inscription; it
-> runs on signet/regtest only and mainnet is code-locked. Repo: `<REPO_URL>`
+> runs on signet/regtest only and mainnet is code-locked. Repo: `https://github.com/Marvintymo/asset-loop`
 >
 > Specific questions:
 > 1. Is the dummy-padded sat routing correct for non-zero inscription offsets and
@@ -58,14 +58,14 @@ Then replace `<REPO_URL>` below with your new repo link.
 >
 > [Same summary as 2A, plus:] I'd especially value critique of the trust model
 > (single indexer, confirmation depth) and whether the whole-UTXO transfer is the
-> right primitive for a marketplace that re-lists continuously. Repo: `<REPO_URL>`
+> right primitive for a marketplace that re-lists continuously. Repo: `https://github.com/Marvintymo/asset-loop`
 
 ## Step 2D — Ordinals / OpenOrdex dev community (Discord/GitHub)
 > Hi — I've built an Ordinals swap marketplace and want eyes on the PSBT
 > construction before mainnet (it's signet/regtest-only, mainnet code-locked). It's
 > close to the OpenOrdex pattern but assembles the full tx and co-signs rather than
 > using a pre-signed listing. Would love a sanity check from people who live in this
-> code. Repo + reproducible proof: `<REPO_URL>`
+> code. Repo + reproducible proof: `https://github.com/Marvintymo/asset-loop`
 
 ## Step 2E — Direct outreach to a paid auditor (for real money)
 > Subject: Security review — Bitcoin Ordinals atomic-swap PSBT engine (~260 LOC)
@@ -73,7 +73,7 @@ Then replace `<REPO_URL>` below with your new repo link.
 > We're preparing a mainnet Ordinals swap marketplace and want an independent
 > review of the settlement engine before enabling real funds. Scope is small
 > (`settlement.js`, ~260 lines) + a threat model and reproducible regtest proof.
-> Repo: `<REPO_URL>`. Could you scope a review + quote? Happy to pin to a commit.
+> Repo: `https://github.com/Marvintymo/asset-loop`. Could you scope a review + quote? Happy to pin to a commit.
 
 ---
 
