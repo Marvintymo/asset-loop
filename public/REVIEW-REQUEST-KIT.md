@@ -17,7 +17,7 @@ gh repo create asset-loop --public --source=. --push
 git remote add origin https://github.com/<you>/asset-loop.git
 git branch -M main && git push -u origin main
 ```
-Then replace `https://github.com/Marvintymo/asset-loop` below with your new repo link.
+✅ Already done — your repo is live at https://github.com/Marvintymo/asset-loop and the posts below are pre-filled with it.
 
 ---
 
