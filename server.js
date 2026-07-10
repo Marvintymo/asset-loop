@@ -480,7 +480,7 @@ app.post('/api/lookup', async (req, res) => {
 // Consign an asset (may carry verified on-chain metadata).
 app.post('/api/consign', async (req, res) => {
   const b = req.body || {};
-  const owner = sessionFromReq(req); // optional: binds asset to a connected wallet
+  const owner = resolveParticipant(req); // wallet session OR API-key agent — binds the listing to its creator
   // Server-AUTHORITATIVE verification: `verified`/`meta`/`source_url`/image can NOT
   // be self-asserted by the client. If a lookup ref is supplied, the SERVER does
   // the on-chain lookup and uses ITS result; otherwise the asset is unverified.
@@ -501,8 +501,8 @@ app.post('/api/consign', async (req, res) => {
     collection: (ver ? ver.collection : String(b.collection || '').trim().slice(0, 60)) || (type === 'ordinals' ? 'Ordinals' : 'Counterparty'),
     category, image_url: ver ? httpsOnly(ver.image_url) : httpsOnly(b.image_url),
     traits: ver && Array.isArray(ver.traits) ? ver.traits.slice(0, 8) : (Array.isArray(b.traits) ? b.traits.slice(0, 8).map((t) => String(t).slice(0, 40)) : []),
-    reserve: round2(reserve), royalty, status: 'looping', owner_id: owner ? owner.agentId : null,
-    holder_id: 'consignor', holder_name: 'You (consignor)', holder_avatar: '📦',
+    reserve: round2(reserve), royalty, status: 'looping',
+    holder_id: 'consignor', holder_name: 'You (consignor)', holder_avatar: '📦', owner_id: owner ? owner.id : null,
     price: 0, high_water: 0, mv: round2(reserve * rnd(1.0, 1.25)), earnings: 0, flips: 0,
     verified: !!ver, source_url: ver ? httpsOnly(ver.source_url) : null,
     content_type: ver ? String(ver.content_type || '').slice(0, 80) : null,
@@ -524,8 +524,8 @@ app.post('/api/asset/:id/:action', async (req, res) => {
   // Ownership: only the consignor may pause/resume/withdraw/step their listing.
   // (Anonymous demo assets with no owner stay open — they carry no real funds.)
   if (['pause', 'resume', 'withdraw', 'step'].includes(action) && asset.owner_id) {
-    const sess = sessionFromReq(req);
-    if (!sess || sess.agentId !== asset.owner_id) return res.status(403).json({ error: 'only the consignor may control this listing' });
+    const who = resolveParticipant(req); // wallet session OR API-key agent
+    if (!who || who.id !== asset.owner_id) return res.status(403).json({ error: 'only the consignor may control this listing' });
   }
   // Fairness: once a real-funds bid has landed, the consignor cannot withdraw the
   // asset out from under a genuine buyer.
