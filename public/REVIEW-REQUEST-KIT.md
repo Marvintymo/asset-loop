@@ -21,28 +21,30 @@ git branch -M main && git push -u origin main
 
 ---
 
-## Step 2A — Bitcoin StackExchange (best for precise answers)
-*Post at* bitcoin.stackexchange.com · *tags:* `psbt` `taproot` `ordinals` `transactions`
+## Step 2A — Bitcoin StackExchange (ONE narrow, on-topic PSBT question)
+Per moderator feedback (Murch): SE wants *one focused question*, and Ordinals-
+mechanics questions are often *off-topic* there. So ask a single, general-Bitcoin
+PSBT/taproot question (not Ordinals-specific) — the taproot-signing one below is a
+perfect fit and is our real open item. Take the Ordinals-specific questions to the
+venues in 2C/2D instead.
 
-> **Title:** Is this dummy-padded Ordinals atomic-swap PSBT construction correct and safe?
+*Post at* bitcoin.stackexchange.com · *tags:* `psbt` `taproot` `wallet` `transactions`
+
+> **Title:** What PSBT fields must a P2TR key-path input carry to be reliably signed by external wallets?
 >
-> I've built an Ordinals atomic-swap marketplace. The core (`settlement.js`,
-> ~260 lines) assembles a single unsigned transaction, co-signed by both parties:
-> inputs `[buyer dummy, seller inscription, buyer payment]`; outputs
-> `[inscription→buyer (dummy+inscription value), payment→seller, change]`. A
-> sat-flow verifier asserts the inscribed sat lands in the buyer output before
-> signing. It's proven end-to-end on regtest with a real `ord` inscription; it
-> runs on signet/regtest only and mainnet is code-locked. Repo: `https://github.com/Marvintymo/asset-loop`
+> I build a PSBT that mixes a **P2TR key-path** input (owned by an external browser
+> wallet — UniSat/OKX/Xverse) with **P2WPKH** inputs, then hand the PSBT to the
+> wallet to sign. With only `witnessUtxo` set on the taproot input, some wallets
+> refuse it or silently skip signing it.
 >
-> Specific questions:
-> 1. Is the dummy-padded sat routing correct for non-zero inscription offsets and
->    multi-inscription UTXOs?
-> 2. I sign the fully-assembled tx with SIGHASH_ALL (no pre-signed listing). Is the
->    seller fully protected vs. the OpenOrdex SINGLE|ANYONECANPAY model?
-> 3. For taproot inputs added `witnessUtxo`-only, what tap fields must be present
->    for arbitrary external wallets (Unisat/OKX/Xverse) to finalize reliably?
-> 4. Is my fee model (68 vB/in, 43 vB/out, +11, ×1.1) safe across input types?
-> 5. Best practice for confirmation depth + double-spend checks before broadcast?
+> What must the taproot input contain for these wallets to reliably produce a
+> **finalizable key-path signature**? Specifically:
+> - Is an explicit `sighashType` required, and does `SIGHASH_ALL` (0x01) vs
+>   `SIGHASH_DEFAULT` (0x00) matter for wallet compatibility?
+> - Is `tapInternalKey` (x-only) needed, and/or `tapBip32Derivation`?
+> - Any case where `nonWitnessUtxo` is expected for P2TR (e.g. hardware wallets)?
+>
+> (Standalone PSBT question — not asking about any specific application.)
 
 ## Step 2B — GitHub issue (on your own repo, to anchor reviews)
 > **Title:** Review request: Ordinals atomic-swap PSBT construction (settlement.js)
