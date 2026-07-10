@@ -1,0 +1,21 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - name: Syntax check
+        run: node -c server.js && node -c settlement.js
+      - name: Sat-routing unit tests
+        run: node tools/test-offsets.js
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static analysis (advisory)
+        run: pip install semgrep && semgrep --config auto settlement.js server.js || true
